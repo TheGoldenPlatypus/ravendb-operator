@@ -25,7 +25,11 @@ trivy fs ./extracted-fs
 > or (before committing)
 > `ggshield secret scan pre-commit`
 
+Push the image:
+```
+docker push thegoldenplatypus/ravendb-operator-multi-node:latest
 
+```
 
 ### 2. Create Kubernetes Cluster
 
@@ -61,7 +65,7 @@ kubectl apply -f ./misc/nginx-ingress-ravendb.yaml
 ```
 
 If you are using Minikube like me, you can open a new shell and run: minikube tunnel
-If you prefer Kind/Docker Desktop — port forwarding is also fine.
+If you prefer Kind/Docker Desktop port forwarding is also fine.
 For VMs/bare metal use MetalLB.
 
 Whatever you choose, make sure that at the end you have assigned an external IP to your ingress controller:

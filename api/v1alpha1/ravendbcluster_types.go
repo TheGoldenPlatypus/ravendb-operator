@@ -20,22 +20,37 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// RavenDBClusterSpec defines the desired state of RavenDBCluster
 type RavenDBClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of RavenDBCluster. Edit ravendbcluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Image            string            `json:"image"`
+	ImagePullPolicy  string            `json:"imagePullPolicy"`
+	Mode             string            `json:"mode"`
+	Email            string            `json:"email,omitempty"`
+	License          string            `json:"license"`
+	Domain           string            `json:"domain"`
+	ServerUrl        string            `json:"serverUrl"`
+	ServerUrlTcp     string            `json:"serverUrlTcp"`
+	StorageSize      string            `json:"storageSize"`
+	Environment      map[string]string `json:"environment,omitempty"` // env vars
+	Nodes            []RavenDBNode     `json:"nodes,omitempty"`
+	IngressClassName string            `json:"ingressClassName,omitempty"`
 }
 
-// RavenDBClusterStatus defines the observed state of RavenDBCluster
+type RavenDBNode struct {
+	Name               string `json:"name"`
+	PublicServerUrl    string `json:"publicServerUrl"`
+	PublicServerUrlTcp string `json:"publicServerUrlTcp"`
+	CertsSecretRef     string `json:"certsSecretRef,omitempty"`
+}
+
 type RavenDBClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Phase   string              `json:"phase,omitempty"`
+	Message string              `json:"message,omitempty"`
+	Nodes   []RavenDBNodeStatus `json:"nodes,omitempty"`
+}
+
+type RavenDBNodeStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 // +kubebuilder:object:root=true

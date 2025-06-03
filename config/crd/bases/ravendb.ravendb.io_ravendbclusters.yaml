@@ -37,15 +37,76 @@ spec:
           metadata:
             type: object
           spec:
-            description: RavenDBClusterSpec defines the desired state of RavenDBCluster
             properties:
-              foo:
-                description: Foo is an example field of RavenDBCluster. Edit ravendbcluster_types.go
-                  to remove/update
+              domain:
                 type: string
+              email:
+                type: string
+              environment:
+                additionalProperties:
+                  type: string
+                type: object
+              image:
+                type: string
+              imagePullPolicy:
+                type: string
+              ingressClassName:
+                type: string
+              license:
+                type: string
+              mode:
+                type: string
+              nodes:
+                items:
+                  properties:
+                    certsSecretRef:
+                      type: string
+                    name:
+                      type: string
+                    publicServerUrl:
+                      type: string
+                    publicServerUrlTcp:
+                      type: string
+                  required:
+                  - name
+                  - publicServerUrl
+                  - publicServerUrlTcp
+                  type: object
+                type: array
+              serverUrl:
+                type: string
+              serverUrlTcp:
+                type: string
+              storageSize:
+                type: string
+            required:
+            - domain
+            - image
+            - imagePullPolicy
+            - license
+            - mode
+            - serverUrl
+            - serverUrlTcp
+            - storageSize
             type: object
           status:
-            description: RavenDBClusterStatus defines the observed state of RavenDBCluster
+            properties:
+              message:
+                type: string
+              nodes:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    status:
+                      type: string
+                  required:
+                  - name
+                  - status
+                  type: object
+                type: array
+              phase:
+                type: string
             type: object
         type: object
     served: true

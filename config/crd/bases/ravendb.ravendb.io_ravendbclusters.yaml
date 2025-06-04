@@ -41,6 +41,7 @@ spec:
               domain:
                 type: string
               email:
+                pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
                 type: string
               environment:
                 additionalProperties:
@@ -49,12 +50,19 @@ spec:
               image:
                 type: string
               imagePullPolicy:
+                enum:
+                - Always
+                - IfNotPresent
+                - Never
                 type: string
               ingressClassName:
                 type: string
               license:
                 type: string
               mode:
+                enum:
+                - None
+                - LetsEncrypt
                 type: string
               nodes:
                 items:
@@ -72,6 +80,7 @@ spec:
                   - publicServerUrl
                   - publicServerUrlTcp
                   type: object
+                minItems: 1
                 type: array
               serverUrl:
                 type: string

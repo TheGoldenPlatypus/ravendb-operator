@@ -102,6 +102,35 @@ func pointerPathType(pt networkingv1.PathType) *networkingv1.PathType {
 	return &pt
 }
 
+func buildCommonEnvVars(instance *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode) []corev1.EnvVar {
+	envVars := []corev1.EnvVar{
+		{Name: "RAVEN_Setup_Mode", Value: instance.Spec.Mode},
+		{Name: "RAVEN_License", Value: instance.Spec.License},
+		{Name: "RAVEN_License_Eula_Accepted", Value: "true"},
+		{Name: "RAVEN_ServerUrl", Value: instance.Spec.ServerUrl},
+		{Name: "RAVEN_ServerUrl_Tcp", Value: instance.Spec.ServerUrlTcp},
+		{Name: "RAVEN_PublicServerUrl", Value: node.PublicServerUrl},
+		{Name: "RAVEN_PublicServerUrl_Tcp", Value: node.PublicServerUrlTcp},
+	}
+	return envVars
+}
+
+func buildInsecureEnvVars() []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: "RAVEN_Security_UnsecuredAccessAllowed", Value: "PublicNetwork"},
+	}
+}
+
+func buildSecureEnvVars(instance *ravendbv1alpha1.RavenDBCluster) []corev1.EnvVar {
+	envVars := []corev1.EnvVar{
+		{Name: "RAVEN_Security_Certificate_Path", Value: "/ravendb/certs/server.pfx"},
+		{Name: "RAVEN_Security_Certificate_Exec_TimeoutInSec", Value: "60"},
+		{Name: "RAVEN_Security_Certificate_LetsEncrypt_Email", Value: instance.Spec.Email},
+	}
+
+	return envVars
+}
+
 func (r *RavenDBClusterReconciler) ensureNodeIngress(ctx context.Context, instance *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode) error {
 	ingressName := fmt.Sprintf("ravendb-%s", node.Name)
 
@@ -123,17 +152,35 @@ func (r *RavenDBClusterReconciler) ensureNodeIngress(ctx context.Context, instan
 	hostBase := fmt.Sprintf("%s.%s", strings.ToLower(node.Name), instance.Spec.Domain)
 	tcpHost := fmt.Sprintf("%s-tcp.%s", strings.ToLower(node.Name), instance.Spec.Domain)
 
+	var backendProtocol string
+	var webPort int32
+	annotations := map[string]string{}
+
+	switch instance.Spec.Mode {
+	case "None":
+		backendProtocol = "HTTP"
+		webPort = 8080
+
+	case "LetsEncrypt":
+		backendProtocol = "HTTPS"
+		webPort = 443
+
+		annotations["nginx.ingress.kubernetes.io/ssl-passthrough"] = "true"
+		annotations["ingress.kubernetes.io/ssl-passthrough"] = "true"
+
+	default:
+		return fmt.Errorf("unsupported mode: %s", instance.Spec.Mode)
+	}
+
+	annotations["nginx.ingress.kubernetes.io/backend-protocol"] = backendProtocol
+	annotations["ingress.kubernetes.io/backend-protocol"] = backendProtocol
+
 	ing := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: instance.Namespace,
-			Labels:    labels,
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-				"nginx.ingress.kubernetes.io/ssl-passthrough":  "true",
-				"ingress.kubernetes.io/ssl-passthrough":        "true",
-				"ingress.kubernetes.io/backend-protocol":       "HTTPS",
-			},
+			Name:        ingressName,
+			Namespace:   instance.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: ptr.To(instance.Spec.IngressClassName),
@@ -149,7 +196,7 @@ func (r *RavenDBClusterReconciler) ensureNodeIngress(ctx context.Context, instan
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
 											Name: fmt.Sprintf("ravendb-%s", node.Name),
-											Port: networkingv1.ServiceBackendPort{Number: 443},
+											Port: networkingv1.ServiceBackendPort{Number: webPort},
 										},
 									},
 								},
@@ -195,6 +242,17 @@ func (r *RavenDBClusterReconciler) ensureNodeService(ctx context.Context, instan
 		return err
 	}
 
+	var webPort corev1.ServicePort
+
+	switch instance.Spec.Mode {
+	case "None":
+		webPort = corev1.ServicePort{Name: "http", Port: 8080}
+	case "LetsEncrypt":
+		webPort = corev1.ServicePort{Name: "https", Port: 443}
+	default:
+		return fmt.Errorf("unsupported mode: %s", instance.Spec.Mode)
+	}
+
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      svcName,
@@ -207,7 +265,7 @@ func (r *RavenDBClusterReconciler) ensureNodeService(ctx context.Context, instan
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
-				{Name: "https", Port: 443},
+				webPort,
 				{Name: "tcp", Port: 38888, Protocol: corev1.ProtocolTCP},
 			},
 			Selector: map[string]string{
@@ -233,6 +291,46 @@ func (r *RavenDBClusterReconciler) ensureNodeStatefulSet(ctx context.Context, in
 	}
 
 	replicas := int32(1)
+	var containerPorts []corev1.ContainerPort
+	volumeMounts := []corev1.VolumeMount{
+		{Name: "ravendb", MountPath: "/var/lib/ravendb/data"},
+	}
+	var volumes []corev1.Volume
+	annotations := map[string]string{}
+	envVars := buildCommonEnvVars(instance, node)
+
+	switch instance.Spec.Mode {
+	case "None":
+		envVars = append(envVars, buildInsecureEnvVars()...)
+		containerPorts = []corev1.ContainerPort{
+			{Name: "http", ContainerPort: 8080},
+			{Name: "tcp", ContainerPort: 8080},
+		}
+
+	case "LetsEncrypt":
+		envVars = append(envVars, buildSecureEnvVars(instance)...)
+		containerPorts = []corev1.ContainerPort{
+			{Name: "https", ContainerPort: 443},
+			{Name: "tcp", ContainerPort: 443},
+		}
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: "ravendb-certs", MountPath: "/ravendb/certs",
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "ravendb-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: node.CertsSecretRef,
+				},
+			},
+		})
+
+		annotations["ingress.kubernetes.io/ssl-passthrough"] = "true"
+
+	default:
+		return fmt.Errorf("unsupported mode: %s", instance.Spec.Mode)
+	}
+
 	sts := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      stsName,
@@ -241,9 +339,7 @@ func (r *RavenDBClusterReconciler) ensureNodeStatefulSet(ctx context.Context, in
 				"app":      "ravendb",
 				"node-tag": node.Name,
 			},
-			Annotations: map[string]string{
-				"ingress.kubernetes.io/ssl-passthrough": "true",
-			},
+			Annotations: annotations,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName: instance.Name,
@@ -258,39 +354,14 @@ func (r *RavenDBClusterReconciler) ensureNodeStatefulSet(ctx context.Context, in
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "ravendb",
-							Image: instance.Spec.Image,
-							Env: []corev1.EnvVar{
-								{Name: "RAVEN_Setup_Mode", Value: instance.Spec.Mode},
-								{Name: "RAVEN_Security_Certificate_Path", Value: "/ravendb/certs/server.pfx"},
-								{Name: "RAVEN_Security_Certificate_Exec_TimeoutInSec", Value: "60"},
-								{Name: "RAVEN_License", Value: instance.Spec.License},
-								{Name: "RAVEN_License_Eula_Accepted", Value: "true"},
-								{Name: "RAVEN_ServerUrl", Value: instance.Spec.ServerUrl},
-								{Name: "RAVEN_ServerUrl_Tcp", Value: instance.Spec.ServerUrlTcp},
-								{Name: "RAVEN_PublicServerUrl", Value: node.PublicServerUrl},
-								{Name: "RAVEN_PublicServerUrl_Tcp", Value: node.PublicServerUrlTcp},
-							},
-							Ports: []corev1.ContainerPort{
-								{Name: "https", ContainerPort: 443},
-								{Name: "tcp", ContainerPort: 443},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{Name: "ravendb-certs", MountPath: "/ravendb/certs"},
-								{Name: "ravendb", MountPath: "/var/lib/ravendb/data"},
-							},
+							Name:         "ravendb",
+							Image:        instance.Spec.Image,
+							Env:          envVars,
+							Ports:        containerPorts,
+							VolumeMounts: volumeMounts,
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "ravendb-certs",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: node.CertsSecretRef,
-								},
-							},
-						},
-					},
+					Volumes: volumes,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -312,12 +383,6 @@ func (r *RavenDBClusterReconciler) ensureNodeStatefulSet(ctx context.Context, in
 			},
 		},
 	}
-	if instance.Spec.Mode == "LetsEncrypt" && instance.Spec.Email != "" {
-		sts.Spec.Template.Spec.Containers[0].Env = append(sts.Spec.Template.Spec.Containers[0].Env,
-			corev1.EnvVar{Name: "RAVEN_Security_Certificate_LetsEncrypt_Email", Value: instance.Spec.Email},
-		)
-	}
-
 	return r.Create(ctx, &sts)
 
 }

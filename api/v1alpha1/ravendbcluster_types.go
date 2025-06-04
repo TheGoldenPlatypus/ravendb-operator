@@ -21,25 +21,58 @@ import (
 )
 
 type RavenDBClusterSpec struct {
-	Image            string            `json:"image"`
-	ImagePullPolicy  string            `json:"imagePullPolicy"`
-	Mode             string            `json:"mode"`
-	Email            string            `json:"email,omitempty"`
-	License          string            `json:"license"`
-	Domain           string            `json:"domain"`
-	ServerUrl        string            `json:"serverUrl"`
-	ServerUrlTcp     string            `json:"serverUrlTcp"`
-	StorageSize      string            `json:"storageSize"`
-	Environment      map[string]string `json:"environment,omitempty"` // env vars
-	Nodes            []RavenDBNode     `json:"nodes,omitempty"`
-	IngressClassName string            `json:"ingressClassName,omitempty"`
+	// +kubebuilder:validation:Required
+	Image string `json:"image"`
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=Always;IfNotPresent;Never
+	ImagePullPolicy string `json:"imagePullPolicy"`
+
+	// +kubebuilder:validation:Enum=None;LetsEncrypt
+	Mode string `json:"mode"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern=`^[^@\s]+@[^@\s]+\.[^@\s]+$`
+	Email string `json:"email,omitempty"`
+
+	// +kubebuilder:validation:Required
+	License string `json:"license"`
+
+	// +kubebuilder:validation:Required
+	Domain string `json:"domain"`
+
+	// +kubebuilder:validation:Required
+	ServerUrl string `json:"serverUrl"`
+
+	// +kubebuilder:validation:Required
+	ServerUrlTcp string `json:"serverUrlTcp"`
+
+	// +kubebuilder:validation:Required
+	StorageSize string `json:"storageSize"`
+
+	// +kubebuilder:validation:Optional
+	Environment map[string]string `json:"environment,omitempty"` // env vars
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	Nodes []RavenDBNode `json:"nodes,omitempty"`
+
+	// +kubebuilder:validation:Required
+	IngressClassName string `json:"ingressClassName,omitempty"`
 }
 
 type RavenDBNode struct {
-	Name               string `json:"name"`
-	PublicServerUrl    string `json:"publicServerUrl"`
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Required
+	PublicServerUrl string `json:"publicServerUrl"`
+
+	// +kubebuilder:validation:Required
 	PublicServerUrlTcp string `json:"publicServerUrlTcp"`
-	CertsSecretRef     string `json:"certsSecretRef,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	CertsSecretRef string `json:"certsSecretRef,omitempty"`
 }
 
 type RavenDBClusterStatus struct {

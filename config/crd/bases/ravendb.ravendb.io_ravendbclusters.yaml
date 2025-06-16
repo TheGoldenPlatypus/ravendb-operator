@@ -17,7 +17,6 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: RavenDBCluster is the Schema for the ravendbclusters API
         properties:
           apiVersion:
             description: |-
@@ -65,7 +64,6 @@ spec:
                 type: string
               mode:
                 enum:
-                - None
                 - LetsEncrypt
                 type: string
               nodes:
@@ -126,6 +124,10 @@ spec:
                   type: object
                 type: array
               phase:
+                enum:
+                - Deploying
+                - Running
+                - Error
                 type: string
             type: object
         type: object

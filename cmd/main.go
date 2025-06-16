@@ -37,6 +37,7 @@ import (
 
 	ravendbv1alpha1 "ravendb-operator/api/v1alpha1"
 	"ravendb-operator/internal/controller"
+	"ravendb-operator/pkg/director"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -145,8 +146,9 @@ func main() {
 	}
 
 	if err = (&controller.RavenDBClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Director: director.NewDefaultDirector(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RavenDBCluster")
 		os.Exit(1)

@@ -16,10 +16,6 @@ limitations under the License.
 
 package v1alpha1
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
 type RavenDBClusterSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
@@ -29,8 +25,8 @@ type RavenDBClusterSpec struct {
 	// +kubebuilder:validation:Enum=Always;IfNotPresent;Never
 	ImagePullPolicy string `json:"imagePullPolicy"`
 
-	// +kubebuilder:validation:Enum=None;LetsEncrypt
-	Mode string `json:"mode"`
+	// +kubebuilder:validation:Enum=LetsEncrypt;
+	Mode ClusterMode `json:"mode"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Pattern=`^[^@\s]+@[^@\s]+\.[^@\s]+$`
@@ -66,57 +62,4 @@ type RavenDBClusterSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	IngressClassName string `json:"ingressClassName"`
-}
-
-type RavenDBNode struct {
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name"`
-
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	PublicServerUrl string `json:"publicServerUrl"`
-
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	PublicServerUrlTcp string `json:"publicServerUrlTcp"`
-
-	// +kubebuilder:validation:Optional
-	CertsSecretRef string `json:"certsSecretRef,omitempty"`
-}
-
-type RavenDBClusterStatus struct {
-	Phase   string              `json:"phase,omitempty"`
-	Message string              `json:"message,omitempty"`
-	Nodes   []RavenDBNodeStatus `json:"nodes,omitempty"`
-}
-
-type RavenDBNodeStatus struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-}
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-
-// RavenDBCluster is the Schema for the ravendbclusters API
-type RavenDBCluster struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   RavenDBClusterSpec   `json:"spec,omitempty"`
-	Status RavenDBClusterStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// RavenDBClusterList contains a list of RavenDBCluster
-type RavenDBClusterList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RavenDBCluster `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&RavenDBCluster{}, &RavenDBClusterList{})
 }

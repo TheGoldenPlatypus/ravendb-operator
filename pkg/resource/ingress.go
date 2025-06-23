@@ -43,7 +43,7 @@ func BuildIngress(cluster *ravendbv1alpha1.RavenDBCluster) (*networkingv1.Ingres
 	ingressName := common.App
 
 	labels := buildIngressLabels(cluster)
-	annotations := buildIngressAnnotations()
+	annotations := buildIngressAnnotations(cluster)
 	rules := buildIngressRules(cluster)
 
 	ing := &networkingv1.Ingress{
@@ -54,7 +54,7 @@ func BuildIngress(cluster *ravendbv1alpha1.RavenDBCluster) (*networkingv1.Ingres
 			Annotations: annotations,
 		},
 		Spec: networkingv1.IngressSpec{
-			IngressClassName: &cluster.Spec.IngressClassName,
+			IngressClassName: &cluster.Spec.ExternalAccessConfiguration.IngressControllerExternalAccess.IngressClassName,
 			Rules:            rules,
 		},
 	}
@@ -70,11 +70,34 @@ func buildIngressLabels(cluster *ravendbv1alpha1.RavenDBCluster) map[string]stri
 	}
 }
 
-func buildIngressAnnotations() map[string]string {
-	return map[string]string{
+func buildIngressAnnotations(cluster *ravendbv1alpha1.RavenDBCluster) map[string]string {
+	annotations := map[string]string{
 		common.IngressSSLPassthroughAnnotation: "true",
-		common.NginxSSLPassthroughAnnotation:   "true",
 	}
+
+	ic := cluster.Spec.ExternalAccessConfiguration.IngressControllerExternalAccess
+	////////////////////////////////////////////////////////////////////////////
+	// to be removed - validation and fallback should be done in webhooks
+	if ic == nil {
+		return annotations
+	}
+	////////////////////////////////////////////////////////////////////////////
+
+	switch ic.IngressClassName {
+
+	case "nginx":
+		annotations[common.NginxSSLPassthroughAnnotation] = "true"
+	case "haproxy":
+		// placehodler , TODO
+	case "traefik":
+		// placehodler , TODO
+	}
+
+	for k, v := range ic.AdditionalAnnotations {
+		annotations[k] = v
+	}
+
+	return annotations
 }
 
 func buildIngressRules(cluster *ravendbv1alpha1.RavenDBCluster) []networkingv1.IngressRule {

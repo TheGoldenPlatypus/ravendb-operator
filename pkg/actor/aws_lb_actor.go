@@ -25,17 +25,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Actor interface {
-	Name() string
+type awsLBActor struct{}
+
+func NewAWSLBActor() PerNodeActor {
+	return &awsLBActor{}
 }
 
-type PerNodeActor interface {
-	Actor
-	Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, c client.Client, scheme *runtime.Scheme) error
+func (a *awsLBActor) Name() string {
+	return "AWSLBActor"
 }
 
-type PerClusterActor interface {
-	Actor
-	ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool
-	Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, c client.Client, scheme *runtime.Scheme) error
+func (a *awsLBActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
+	return cluster.Spec.ExternalAccessConfiguration != nil &&
+		cluster.Spec.ExternalAccessConfiguration.Type == ravendbv1alpha1.ExternalAccessTypeAWS
+}
+
+func (a *awsLBActor) Act(
+	ctx context.Context,
+	cluster *ravendbv1alpha1.RavenDBCluster,
+	node ravendbv1alpha1.RavenDBNode,
+	c client.Client,
+	scheme *runtime.Scheme,
+) error {
+
+	return nil
 }

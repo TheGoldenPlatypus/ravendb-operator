@@ -152,7 +152,7 @@ func buildVolumes(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.
 	}
 	///////////////////////////////////////////////////////////////////////////
 	return []corev1.Volume{
-		{Name: common.CertVolumeName, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: node.CertsSecretRef}}},
+		{Name: common.CertVolumeName, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: certSecretName}}},
 		{Name: common.LicenseVolumeName, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: cluster.Spec.LicenseSecretRef}}},
 	}
 }

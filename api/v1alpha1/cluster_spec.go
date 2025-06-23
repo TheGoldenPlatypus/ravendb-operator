@@ -44,14 +44,6 @@ type RavenDBClusterSpec struct {
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
-	ServerUrl string `json:"serverUrl"`
-
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	ServerUrlTcp string `json:"serverUrlTcp"`
-
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
 	StorageSize string `json:"storageSize"`
 
 	// +kubebuilder:validation:Optional
@@ -61,10 +53,9 @@ type RavenDBClusterSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	Nodes []RavenDBNode `json:"nodes,omitempty"`
 
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	IngressClassName string `json:"ingressClassName"`
-
 	// +kubebuilder:validation:Optional
 	Env map[string]string `json:"env,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	ExternalAccessConfiguration *ExternalAccessConfiguration `json:"externalAccessConfiguration,omitempty"`
 }

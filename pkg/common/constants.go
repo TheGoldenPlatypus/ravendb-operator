@@ -32,7 +32,7 @@ const (
 	Prefix            = "ravendb-"
 	HttpsPortName     = "https"
 	TcpPortName       = "tcp"
-	CertVolumeName    = "ravendb-certs"
+	CertVolumeName    = "ravendb-cert"
 	LicenseVolumeName = "ravendb-license"
 )
 
@@ -51,10 +51,15 @@ const (
 	NginxSSLPassthroughAnnotation   = "nginx.ingress.kubernetes.io/ssl-passthrough"
 )
 
-// ports
+// intenral ports
 const (
 	InternalHttpsPort = 443
 	InternalTcpPort   = 38888
+)
+
+const (
+	InternalHttpsUrl = "https://0.0.0.0:443"
+	InternalTcpUrl   = "tcp://0.0.0.0:38888"
 )
 
 // other

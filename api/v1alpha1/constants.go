@@ -30,3 +30,10 @@ const (
 	PhaseRunning   ClusterPhase = "Running"
 	PhaseError     ClusterPhase = "Error"
 )
+
+type ExternalAccessType string
+
+const (
+	ExternalAccessTypeAWS               ExternalAccessType = "aws"
+	ExternalAccessTypeIngressController ExternalAccessType = "ingress-controller"
+)

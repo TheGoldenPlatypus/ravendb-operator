@@ -32,8 +32,8 @@ func BuildCommonEnvVars(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1a
 		{Name: "RAVEN_License_Eula_Accepted", Value: "true"},
 		{Name: "RAVEN_PublicServerUrl", Value: node.PublicServerUrl},
 		{Name: "RAVEN_PublicTcpUrl", Value: node.PublicServerUrlTcp},
-		{Name: "RAVEN_ServerUrl", Value: cluster.Spec.ServerUrl},
-		{Name: "RAVEN_ServerUrl_Tcp", Value: cluster.Spec.ServerUrlTcp},
+		{Name: "RAVEN_ServerUrl", Value: InternalHttpsUrl},
+		{Name: "RAVEN_ServerUrl_Tcp", Value: InternalTcpUrl},
 		{Name: "RAVEN_PublicServerUrl_Tcp_Cluster", Value: ravendbNodeTcpEndpoint},
 	}
 }

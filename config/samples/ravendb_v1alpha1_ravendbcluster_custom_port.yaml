@@ -10,16 +10,16 @@ metadata:
 spec:
   nodes:
     - tag: a
-      publicServerUrl: https://a.thegoldenplatypus.development.run:443
-      publicServerUrlTcp: tcp://a-tcp.thegoldenplatypus.development.run:443
+      publicServerUrl: https://a.thegoldenplatypuscustom.development.run:4443
+      publicServerUrlTcp: tcp://a-tcp.thegoldenplatypuscustom.development.run:4443
       certsSecretRef: ravendb-certs-a
     - tag: b
-      publicServerUrl: https://b.thegoldenplatypus.development.run:443
-      publicServerUrlTcp: tcp://b-tcp.thegoldenplatypus.development.run:443
+      publicServerUrl: https://b.thegoldenplatypuscustom.development.run:4443
+      publicServerUrlTcp: tcp://b-tcp.thegoldenplatypuscustom.development.run:4443
       certsSecretRef: ravendb-certs-b
     - tag: c
-      publicServerUrl: https://c.thegoldenplatypus.development.run:443
-      publicServerUrlTcp: tcp://c-tcp.thegoldenplatypus.development.run:443
+      publicServerUrl: https://c.thegoldenplatypuscustom.development.run:4443
+      publicServerUrlTcp: tcp://c-tcp.thegoldenplatypuscustom.development.run:4443
       certsSecretRef: ravendb-certs-c
 
   image: ravendb/ravendb:latest
@@ -27,13 +27,11 @@ spec:
   mode: LetsEncrypt
   email: omer.ratsaby@ravendb.net
   licenseSecretRef: ravendb-license
-  domain: thegoldenplatypus.development.run
+  domain: thegoldenplatypuscustom.development.run
   storageSize: 5Gi
 
   externalAccessConfiguration:
     type: ingress-controller
     ingressControllerContext:
       ingressClassName: nginx
-      additionalAnnotations: # example of additional annotations
-        nginx.ingress.kubernetes.io/limit-connections: "10"
-        nginx.ingress.kubernetes.io/limit-rps: "5"
+

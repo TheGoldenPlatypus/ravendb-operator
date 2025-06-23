@@ -51,3 +51,8 @@ func (a *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDB
 
 	return nil
 }
+
+func (a *ingressActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
+	return cluster.Spec.ExternalAccessConfiguration != nil &&
+		cluster.Spec.ExternalAccessConfiguration.Type == ravendbv1alpha1.ExternalAccessTypeIngressController
+}

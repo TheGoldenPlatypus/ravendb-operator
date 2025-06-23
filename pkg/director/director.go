@@ -69,6 +69,9 @@ func (d *DefaultDirector) ExecutePerCluster(
 	scheme *runtime.Scheme,
 ) error {
 	for _, actor := range d.perClusterActors {
+		if !actor.ShouldAct(cluster) {
+			continue
+		}
 		if err := actor.Act(ctx, cluster, c, scheme); err != nil {
 			return fmt.Errorf("%s failed: %w", actor.Name(), err)
 		}

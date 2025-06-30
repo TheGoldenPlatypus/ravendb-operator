@@ -23,6 +23,8 @@ const (
 	DataMountPath    = "/var/lib/ravendb/data"
 	CertMountPath    = "/ravendb/certs"
 	LicenseMountPath = "/ravendb/license"
+	LogsMountPath    = "/var/log/ravendb/logs"
+	AuditMountPath   = "/var/log/ravendb/audit"
 )
 
 // identifiers
@@ -34,6 +36,9 @@ const (
 	TcpPortName       = "tcp"
 	CertVolumeName    = "ravendb-cert"
 	LicenseVolumeName = "ravendb-license"
+	DataVolumeName    = "ravendb-data"
+	LogsVolumeName    = "ravendb-logs"
+	AuditVolumeName   = "ravendb-audit"
 )
 
 // labels

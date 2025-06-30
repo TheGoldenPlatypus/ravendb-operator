@@ -23,11 +23,8 @@ import (
 	ravendbv1alpha1 "ravendb-operator/api/v1alpha1"
 	"ravendb-operator/pkg/common"
 
-	"k8s.io/utils/pointer"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -50,13 +47,15 @@ func BuildStatefulSet(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alp
 	selector := &metav1.LabelSelector{MatchLabels: buildStatefulsetSelector(node)}
 	annotations := buildStatefulsetAnnotations()
 	ports := buildPorts()
+
+	volumeClaims := BuildPVCs(cluster)
 	volumes := buildVolumes(cluster, node)
-	volumeMounts := buildVolumeMounts()
-	volumeClaims := buildVolumeClaims(cluster)
-	envVars, err := buildEnvVars(cluster, node)
-	if err != nil {
-		return nil, err
-	}
+	volumeMounts := buildVolumeMounts(cluster)
+
+	envVars, _ := buildEnvVars(cluster, node)
+	ipp := corev1.PullPolicy(cluster.Spec.ImagePullPolicy)
+
+	containers := buildContainers(cluster.Spec.Image, envVars, ports, volumeMounts, ipp, cluster)
 
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -74,18 +73,8 @@ func BuildStatefulSet(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alp
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:         common.App,
-							Image:        cluster.Spec.Image,
-							Env:          envVars,
-							Ports:        ports,
-							VolumeMounts: volumeMounts,
-							// TODO: to be removed
-							SecurityContext: &corev1.SecurityContext{RunAsUser: pointer.Int64(0)},
-						},
-					},
-					Volumes: volumes,
+					Containers: containers,
+					Volumes:    volumes,
 				},
 			},
 			VolumeClaimTemplates: volumeClaims,
@@ -95,10 +84,23 @@ func BuildStatefulSet(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alp
 	return sts, nil
 }
 
+func buildContainers(image string, env []corev1.EnvVar, ports []corev1.ContainerPort, mounts []corev1.VolumeMount, ipp corev1.PullPolicy, cluster *ravendbv1alpha1.RavenDBCluster) []corev1.Container {
+	rdbContainer := BuildRavenDBContainer(image, env, ports, mounts, ipp)
+
+	// TODO: might use sidecars later
+	//sideCarContainers := BuildSidecarContainers(cluster.Spec.Sidecars, nil)
+	//containers := append([]corev1.Container{rdbContainer}, sideCarContainers...)
+	//return containers
+
+	return []corev1.Container{rdbContainer}
+
+}
+
 func buildStatefulsetSelector(node ravendbv1alpha1.RavenDBNode) map[string]string {
 	return map[string]string{
 		common.LabelNodeTag: node.Tag}
 }
+
 func buildStatefulsetLabels(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode) map[string]string {
 	return map[string]string{
 		common.LabelAppName:   common.App,
@@ -123,6 +125,7 @@ func buildEnvVars(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.
 	case ravendbv1alpha1.ModeNone:
 		env = append(env, common.BuildSecureEnvVars(cluster)...)
 	default:
+		//TODO: remove this when webhook is implemented
 		return nil, fmt.Errorf("unsupported cluster mode: %s", cluster.Spec.Mode)
 	}
 
@@ -151,36 +154,93 @@ func buildVolumes(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.
 		panic("no cert secret defined")
 	}
 	///////////////////////////////////////////////////////////////////////////
-	return []corev1.Volume{
-		{Name: common.CertVolumeName, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: certSecretName}}},
-		{Name: common.LicenseVolumeName, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: cluster.Spec.LicenseSecretRef}}},
+
+	volumes := []corev1.Volume{
+		buildPVCVolume(common.DataVolumeName),
+		buildSecretVolume(common.CertVolumeName, certSecretName),
+		buildSecretVolume(common.LicenseVolumeName, cluster.Spec.LicenseSecretRef),
 	}
+
+	// TODO: validation and fallback should be done in webhooks
+	if logs := cluster.Spec.StorageSpec.Logs; logs != nil {
+		if logs.RavenDB != nil {
+			volumes = append(volumes, buildPVCVolume(common.LogsVolumeName))
+		}
+		if logs.Audit != nil {
+			volumes = append(volumes, buildPVCVolume(common.AuditVolumeName))
+		}
+	}
+
+	// TODO: validation and fallback should be done in webhooks
+	if len(cluster.Spec.StorageSpec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, buildAdditionalVolumes(cluster.Spec.StorageSpec.AdditionalVolumes)...)
+	}
+
+	return volumes
+
 }
 
-func buildVolumeMounts() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
-		{Name: common.App, MountPath: common.DataMountPath},
-		{Name: common.CertVolumeName, MountPath: common.CertMountPath},
-		{Name: common.LicenseVolumeName, MountPath: common.LicenseMountPath},
+func buildVolumeMounts(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.VolumeMount {
+	vMounts := []corev1.VolumeMount{
+		buildVolumeMount(common.DataVolumeName, common.DataMountPath),
+		buildVolumeMount(common.CertVolumeName, common.CertMountPath),
+		buildVolumeMount(common.LicenseVolumeName, common.LicenseMountPath),
 	}
+
+	// TODO: validation and fallback should be done in webhooks
+	if logs := cluster.Spec.StorageSpec.Logs; logs != nil {
+		if logs.RavenDB != nil && logs.RavenDB.Size != "" {
+			logPath := common.LogsMountPath
+			if logs.RavenDB.Path != nil {
+				logPath = *logs.RavenDB.Path
+			}
+			vMounts = append(vMounts, buildVolumeMount(common.LogsVolumeName, logPath))
+		}
+		if logs.Audit != nil && logs.Audit.Size != "" {
+			auditPath := common.AuditMountPath
+			if logs.Audit.Path != nil {
+				auditPath = *logs.Audit.Path
+			}
+			vMounts = append(vMounts, buildVolumeMount(common.AuditVolumeName, auditPath))
+		}
+	}
+	//////////////////////////////////
+
+	for _, av := range cluster.Spec.StorageSpec.AdditionalVolumes {
+		if av.MountPath != "" {
+			mount := corev1.VolumeMount{
+				Name:      av.Name,
+				MountPath: av.MountPath,
+			}
+
+			// todo: validation and fallback should be done in webhooks
+			if av.SubPath != "" {
+				mount.SubPath = av.SubPath
+			}
+
+			vMounts = append(vMounts, mount)
+		}
+	}
+
+	return vMounts
 }
 
-func buildVolumeClaims(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.PersistentVolumeClaim {
-	return []corev1.PersistentVolumeClaim{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: common.App,
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-				Resources: corev1.VolumeResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: k8sresource.MustParse(cluster.Spec.StorageSize),
-					},
-				},
-			},
-		},
+func BuildPVCs(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.PersistentVolumeClaim {
+
+	var pvcs []corev1.PersistentVolumeClaim
+
+	data := cluster.Spec.StorageSpec.Data
+	pvcs = append(pvcs, buildPersistentVolumeClaim(common.DataVolumeName, data.Size, data.StorageClassName))
+
+	// TODO: validation and fallback should be done in webhooks
+	if logs := cluster.Spec.StorageSpec.Logs; logs != nil {
+		if logs.RavenDB != nil && logs.RavenDB.Size != "" {
+			pvcs = append(pvcs, buildPersistentVolumeClaim(common.LogsVolumeName, logs.RavenDB.Size, logs.RavenDB.StorageClassName))
+		}
+		if logs.Audit != nil && logs.Audit.Size != "" {
+			pvcs = append(pvcs, buildPersistentVolumeClaim(common.AuditVolumeName, logs.Audit.Size, logs.Audit.StorageClassName))
+		}
 	}
+
+	return pvcs
 }

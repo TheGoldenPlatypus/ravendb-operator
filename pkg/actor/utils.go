@@ -51,3 +51,5 @@ func applyResource(ctx context.Context, c client.Client, scheme *runtime.Scheme,
 	log.Info("Updated resource", "name", key.Name)
 	return nil
 }
+
+// TODO: merge and patch logic on each actor to avoid recurring rolling updates -> RavenDB-24330 Kubernetes Operator: Health check probe available via kubectl

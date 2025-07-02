@@ -35,6 +35,24 @@ spec:
 
   storage:
     data:
-      size: 10Gi
-      storageClassName: local-path
-
+      size: 10Gi                     
+      storageClassName: local-path 
+    additionalVolumes:
+      - name: restore-volume
+        mountPath: /tmp/restore
+        volumeSource:
+          persistentVolumeClaim:
+             claimName: restore-backup-pvc
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: restore-backup-pvc
+#   namespace: ravendb
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 1Gi
+#   storageClassName: local-path

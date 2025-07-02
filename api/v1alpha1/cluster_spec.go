@@ -42,10 +42,6 @@ type RavenDBClusterSpec struct {
 	// +kubebuilder:validation:MinLength=1
 	Domain string `json:"domain"`
 
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	StorageSize string `json:"storageSize"`
-
 	// +kubebuilder:validation:Optional
 	Environment map[string]string `json:"environment,omitempty"` // env vars
 
@@ -58,4 +54,7 @@ type RavenDBClusterSpec struct {
 
 	// +kubebuilder:validation:Optional
 	ExternalAccessConfiguration *ExternalAccessConfiguration `json:"externalAccessConfiguration,omitempty"`
+
+	// +kubebuilder:validation:Required
+	StorageSpec *StorageSpec `json:"storage"`
 }

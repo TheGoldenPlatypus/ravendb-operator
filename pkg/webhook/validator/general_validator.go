@@ -157,10 +157,6 @@ func ValidateEnv(envVars map[string]string) []string {
 			errs = append(errs, fmt.Sprintf("spec.env: duplicate environment variable '%s'", name))
 		}
 		duplicateEvars[name] = true
-
-		if !strings.HasPrefix(name, "RAVEN_") {
-			errs = append(errs, fmt.Sprintf("spec.env: environment variable '%s' must start with 'RAVEN_'", name))
-		}
 	}
 
 	return errs

@@ -375,14 +375,13 @@ func TestGeneralValidatorValidateDomain(t *testing.T) {
 }
 
 func TestGeneralValidatorValidateEnv(t *testing.T) {
-	t.Run("rejects env var without RAVEN_ prefix", func(t *testing.T) {
+	t.Run("accept env var without RAVEN_ prefix", func(t *testing.T) {
 		cluster := baseCluster("no-prefix")
 		cluster.Spec.Env = map[string]string{
 			"DEBUG": "true",
 		}
 		errs := validator.ValidateEnv(cluster.GetEnv())
-		require.NotEmpty(t, errs)
-		require.Contains(t, errs[0], "spec.env: environment variable 'DEBUG' must start with 'RAVEN_'")
+		require.Empty(t, errs)
 	})
 
 	t.Run("accepts valid env vars", func(t *testing.T) {

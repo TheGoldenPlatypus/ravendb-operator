@@ -241,6 +241,7 @@ func TestEnvValidation(t *testing.T) {
 				spec.Env = map[string]string{
 					"RAVEN_ENV":     "value",
 					"Raven_ANOTHER": "123",
+					"MY_ENV_VAR":    "test",
 				}
 			},
 			ExpectError: false,

@@ -12,15 +12,15 @@ spec:
     - tag: a
       publicServerUrl: https://a.thegoldenplatypuscustom.development.run:4443
       publicServerUrlTcp: tcp://a-tcp.thegoldenplatypuscustom.development.run:4443
-      certsSecretRef: ravendb-certs-a
+      certSecretRef: ravendb-certs-a
     - tag: b
       publicServerUrl: https://b.thegoldenplatypuscustom.development.run:4443
       publicServerUrlTcp: tcp://b-tcp.thegoldenplatypuscustom.development.run:4443
-      certsSecretRef: ravendb-certs-b
+      certSecretRef: ravendb-certs-b
     - tag: c
       publicServerUrl: https://c.thegoldenplatypuscustom.development.run:4443
       publicServerUrlTcp: tcp://c-tcp.thegoldenplatypuscustom.development.run:4443
-      certsSecretRef: ravendb-certs-c
+      certSecretRef: ravendb-certs-c
 
   image: ravendb/ravendb:latest
   imagePullPolicy: IfNotPresent

@@ -21,8 +21,7 @@ spec:
   image: ravendb/ravendb:latest
   imagePullPolicy: IfNotPresent
   mode: None
-  email: omer.ratsaby@ravendb.net
-  certsSecretRef: ravendb-cert
+  certSecretRef: ravendb-cert
   licenseSecretRef: ravendb-license
   domain: thegoldenplatypus-ss.development.run
 

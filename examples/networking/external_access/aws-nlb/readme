@@ -40,7 +40,7 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=false \
   --set serviceAccount.name=<your-service-account> \
   --set vpcId=<your-vpc-id> \
-  --version 1.13.0
+  --version 1.13.0 # replace if needed
 ```
 
 #### Step 3: Apply the RavenDB Custom Resource

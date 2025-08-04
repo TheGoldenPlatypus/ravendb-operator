@@ -25,20 +25,23 @@ const (
 	LicenseMountPath = "/ravendb/license"
 	LogsMountPath    = "/var/log/ravendb/logs"
 	AuditMountPath   = "/var/log/ravendb/audit"
+	CertSourcePath   = "ravendb/cert-source"
 )
 
 // identifiers
 const (
-	App               = "ravendb"
-	Manager           = "ravendb-operator"
-	Prefix            = "ravendb-"
-	HttpsPortName     = "https"
-	TcpPortName       = "tcp"
-	CertVolumeName    = "ravendb-cert"
-	LicenseVolumeName = "ravendb-license"
-	DataVolumeName    = "ravendb-data"
-	LogsVolumeName    = "ravendb-logs"
-	AuditVolumeName   = "ravendb-audit"
+	App                   = "ravendb"
+	Manager               = "ravendb-operator"
+	Prefix                = "ravendb-"
+	HttpsPortName         = "https"
+	TcpPortName           = "tcp"
+	CertVolumeName        = "ravendb-cert"
+	LicenseVolumeName     = "ravendb-license"
+	DataVolumeName        = "ravendb-data"
+	LogsVolumeName        = "ravendb-logs"
+	AuditVolumeName       = "ravendb-audit"
+	CertSourceVolumeName  = "ravendb-cert-source"
+	CertCopyContainerName = "init-copy-cert"
 )
 
 // labels

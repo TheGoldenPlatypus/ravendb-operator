@@ -60,6 +60,8 @@ func BuildStatefulSet(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alp
 
 	affinity := buildAWSNodeAffinity(cluster, node.Tag)
 
+	initContainers := buildInitContainers(cluster.Spec.Image)
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        stsName,
@@ -76,9 +78,10 @@ func BuildStatefulSet(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alp
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
-					Volumes:    volumes,
-					Affinity:   affinity,
+					Containers:     containers,
+					Volumes:        volumes,
+					Affinity:       affinity,
+					InitContainers: initContainers,
 				},
 			},
 			VolumeClaimTemplates: volumeClaims,
@@ -98,6 +101,14 @@ func buildContainers(image string, env []corev1.EnvVar, ports []corev1.Container
 
 	return []corev1.Container{rdbContainer}
 
+}
+
+func buildInitContainers(image string) []corev1.Container {
+	var initContainers []corev1.Container
+
+	initContainers = append(initContainers, BuildCertInitContainer(image))
+
+	return initContainers
 }
 
 func buildStatefulsetSelector(node ravendbv1alpha1.RavenDBNode) map[string]string {
@@ -146,8 +157,26 @@ func buildVolumes(cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.
 
 	volumes := []corev1.Volume{
 		buildPVCVolume(common.DataVolumeName),
-		buildSecretVolume(common.CertVolumeName, *node.CertSecretRef),
-		buildSecretVolume(common.LicenseVolumeName, cluster.Spec.LicenseSecretRef),
+	}
+
+	volumes = append(volumes, buildSecretVolume(common.LicenseVolumeName, cluster.Spec.LicenseSecretRef))
+
+	var certSecret *string
+	if node.CertSecretRef != nil {
+		certSecret = node.CertSecretRef
+	} else if cluster.Spec.ClusterCertSecretRef != nil {
+		certSecret = cluster.Spec.ClusterCertSecretRef
+	}
+
+	volumes = append(volumes, corev1.Volume{
+		Name: common.CertVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
+	if certSecret != nil {
+		volumes = append(volumes, buildSecretVolume(common.CertSourceVolumeName, *certSecret))
 	}
 
 	if cluster.Spec.StorageSpec.Logs != nil {

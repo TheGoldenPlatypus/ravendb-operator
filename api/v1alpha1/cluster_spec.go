@@ -38,7 +38,7 @@ type RavenDBClusterSpec struct {
 	LicenseSecretRef string `json:"licenseSecretRef"`
 
 	// +kubebuilder:validation:Optional
-	ClusterCertSecretRef *string `json:"certSecretRef,omitempty"`
+	ClusterCertSecretRef *string `json:"clusterCertSecretRef,omitempty"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
@@ -56,4 +56,7 @@ type RavenDBClusterSpec struct {
 
 	// +kubebuilder:validation:Required
 	StorageSpec StorageSpec `json:"storage"`
+
+	// // +kubebuilder:validation:Optional
+	// Sidecars []Sidecar `json:"sidecars,omitempty"`
 }

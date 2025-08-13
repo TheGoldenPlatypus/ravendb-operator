@@ -983,4 +983,122 @@ func TestValidateAdditionalVolumes(t *testing.T) {
 	})
 }
 
+func TestBootstrapperValidator(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewClientBuilder().Build()
+	v := validator.NewBootstrapperValidator(client)
+
+	t.Run("valid leader and watchers", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("bootstrapper-ok")
+		cluster.Spec.Nodes = append(cluster.Spec.Nodes, v1alpha1.RavenDBNode{
+			Tag:                "C",
+			PublicServerUrl:    "https://c.example.com:443",
+			PublicServerUrlTcp: "tcp://c-tcp.example.com:443",
+		})
+
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:   "A",
+			Watchers: &[]string{"B", "C"},
+		}
+
+		err := v.ValidateCreate(ctx, cluster)
+		require.NoError(t, err)
+	})
+
+	t.Run("leader not in nodes", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("missing-leader-in-nodes-list")
+
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:   "X",
+			Watchers: &[]string{"A"},
+		}
+
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `leader tag "X" not found`)
+	})
+
+	t.Run("watcher not in nodes", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("bad-watcher")
+
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:   "A",
+			Watchers: &[]string{"B", "Z"},
+		}
+
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `watcher tag "Z" not found`)
+	})
+
+	t.Run("leader also a watcher", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("leader-watcher")
+
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:   "A",
+			Watchers: &[]string{"A", "B"},
+		}
+
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `watcher tag "A" cannot also be the leader`)
+	})
+
+	t.Run("duplicate watchers", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("duplicate-watcher")
+
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:   "A",
+			Watchers: &[]string{"B", "B"},
+		}
+
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `duplicate watcher tag "B"`)
+	})
+
+	t.Run("too many watchers", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("too-many-nodes")
+
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:   "A",
+			Watchers: &[]string{"B", "C"},
+		}
+
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `leader + watchers count exceeds`)
+	})
+	t.Run("LetsEncrypt mode with CACertSecretRef should fail", func(t *testing.T) {
+		cluster := baseClusterLetsEncrypt("le-mode-ca-set")
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:          "A",
+			CACertSecretRef: ptr("some-secret"),
+		}
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "caCertSecretRef must not be set when mode is LetsEncrypt")
+	})
+
+	t.Run("None mode with bootstrapper but no CACertSecretRef should fail", func(t *testing.T) {
+		cluster := baseCluster("none-mode-no-ca")
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader: "A",
+		}
+		err := v.ValidateCreate(ctx, cluster)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "caCertSecretRef must be provided when mode is None and clusterBootstrapper is set")
+	})
+
+	t.Run("None mode with bootstrapper and CACertSecretRef should pass", func(t *testing.T) {
+		cluster := baseCluster("none-mode-with-ca")
+		cluster.Spec.AutomaticClusterSetupSpec = &v1alpha1.AutomaticClusterSetupSpec{
+			Leader:          "A",
+			CACertSecretRef: ptr("some-secret"),
+		}
+		err := v.ValidateCreate(ctx, cluster)
+		require.NoError(t, err)
+	})
+}
+
 func ptr(s string) *string { return &s }

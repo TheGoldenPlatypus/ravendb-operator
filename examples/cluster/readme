@@ -8,11 +8,12 @@ The **RavenDB Cluster Bootstrapper** runs inside the cluster as Kubernetes-nativ
 
 ## Key Features
 
-- **Automatic Node Discovery** – Detects and verifies all RavenDB pods are running.
-- **TLS Validation** – Confirms HTTPS endpoints are live and present valid certificates.
-- **Cluster Topology Setup** – Adds members and watchers based on predefined configuration.
-- **Dual Mode Support** – Works with both Let's Encrypt-issued and self-signed TLS certificates.
-- **Fail-Fast Logging** – Provides clear, timestamped logs for each bootstrap step.
+- **Automatic Node Discovery** - Detects and verifies all RavenDB pods are running.
+- **TLS Validation** - Confirms HTTPS endpoints are live and present valid certificates.
+- **Cluster Topology Setup** - Adds members and watchers based on predefined configuration.
+- **Dual Mode Support** - Works with both Let's Encrypt-issued and self-signed TLS certificates.
+- **Supports Multiple Certificate Types** - Can be configured to use either Let's Encrypt-issued or self-signed TLS certificates (one mode per cluster).
+- **Fail-Fast Logging** - Provides clear, timestamped logs for each bootstrap step.
 
 ---
 
@@ -44,7 +45,7 @@ The **RavenDB Cluster Bootstrapper** runs inside the cluster as Kubernetes-nativ
 ---
 
 
-## Cluster Setup Configuration – Let's Encrypt vs Self-Signed
+## Cluster Setup Configuration - Let's Encrypt vs Self-Signed
 
 When defining a `RavenDBCluster` resource, you first decide **how the cluster will be secured**, and based on that, configure **how nodes will join the topology**.
 This involves selecting the TLS mode (**Let's Encrypt** or **Self-Signed**), specifying the cluster leader, and defining which nodes will act as watchers or members.  

@@ -37,6 +37,22 @@ spec:
             type: object
           spec:
             properties:
+              automaticClusterSetup:
+                properties:
+                  caCertSecretRef:
+                    type: string
+                  clientCertSecretRef:
+                    type: string
+                  leader:
+                    type: string
+                  watchers:
+                    items:
+                      type: string
+                    minItems: 1
+                    type: array
+                required:
+                - leader
+                type: object
               clusterCertSecretRef:
                 type: string
               domain:

@@ -162,11 +162,11 @@ $ kubectl get logs -n ravendb ravendb-cluster-init-88w6m
 [06:54:38] Pod readiness check: attempt 1/30
 [06:54:38] All RavenDB pods are running.
 [06:54:38] Checking HTTPS (Studio) reachability of RavenDB nodes...
-[06:54:38] [a] curl -k https://a.thegoldenplatypus.development.run:443
+[06:54:38] [a] curl -k https://a.example.development.run:443
 [06:54:38] [a] Studio redirect detected - looks good
-[06:54:38] [b] curl -k https://b.thegoldenplatypus.development.run:443
+[06:54:38] [b] curl -k https://b.example.development.run:443
 [06:54:38] [b] Studio redirect detected - looks good
-[06:54:38] [c] curl -k https://c.thegoldenplatypus.development.run:443
+[06:54:38] [c] curl -k https://c.example.development.run:443
 [06:54:38] [c] Studio redirect detected - looks good
 [06:54:38] === Discoverability Checks Completed ===
 [06:54:38] === Starting Cluster Initialization ===

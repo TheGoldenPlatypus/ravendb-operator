@@ -39,7 +39,7 @@ func (b *JobBuilder) Build(ctx context.Context, cluster *ravendbv1alpha1.RavenDB
 }
 
 func BuildJob(cluster *ravendbv1alpha1.RavenDBCluster) (*batchv1.Job, error) {
-	jobName := "ravendb-cluster-init"
+	jobName := common.RavenDbBootstrapperJob
 	backoff := int32(0)
 
 	labels := buildJobLabels(cluster)
@@ -90,17 +90,13 @@ func buildJobContainers(image string, vMounts []corev1.VolumeMount, env []corev1
 func buildJobVolumes(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.Volume {
 	var vols []corev1.Volume
 
-	if cluster.Spec.AutomaticClusterSetupSpec == nil {
-		return vols
-	}
-
-	vols = append(vols, buildSecretVolume(common.ClientCertVolumeName, cluster.Spec.AutomaticClusterSetupSpec.ClientCertSecretRef))
+	vols = append(vols, buildSecretVolume(common.ClientCertVolumeName, cluster.Spec.ClientCertSecretRef))
 
 	serverCert := getServerCertSecretName(cluster)
 	vols = append(vols, buildSecretVolume(common.CertVolumeName, serverCert))
 
-	if cluster.Spec.AutomaticClusterSetupSpec.CACertSecretRef != nil {
-		vols = append(vols, buildSecretVolume(common.CACertVolumeName, *cluster.Spec.AutomaticClusterSetupSpec.CACertSecretRef))
+	if cluster.Spec.CACertSecretRef != nil {
+		vols = append(vols, buildSecretVolume(common.CACertVolumeName, *cluster.Spec.CACertSecretRef))
 	}
 
 	vols = append(vols, buildConfigMapVolume(
@@ -119,10 +115,6 @@ func buildJobVolumes(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.Volume {
 func buildJobVolumeMounts(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.VolumeMount {
 	var vMounts []corev1.VolumeMount
 
-	if cluster.Spec.AutomaticClusterSetupSpec == nil {
-		return vMounts
-	}
-
 	cvm := buildVolumeMount(common.ClientCertVolumeName, common.ClientCertMountPath)
 	cvm.ReadOnly = true
 	vMounts = append(vMounts, cvm)
@@ -131,7 +123,7 @@ func buildJobVolumeMounts(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.Volu
 	svm.ReadOnly = true
 	vMounts = append(vMounts, svm)
 
-	if cluster.Spec.AutomaticClusterSetupSpec.CACertSecretRef != nil {
+	if cluster.Spec.CACertSecretRef != nil {
 		cavm := buildVolumeMount(common.CACertVolumeName, common.CACertMountPath)
 		cavm.ReadOnly = true
 		vMounts = append(vMounts, cavm)
@@ -151,42 +143,31 @@ func buildJobVolumeMounts(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.Volu
 }
 
 func buildJobEnvVars(cluster *ravendbv1alpha1.RavenDBCluster) ([]corev1.EnvVar, error) {
-	ac := cluster.Spec.AutomaticClusterSetupSpec
 
-	var leaderURL string
-	var watcherURLs []string
+	leader := cluster.Spec.Nodes[0] // first node is leader
+	leaderURL := leader.PublicServerUrl
+	leaderTag := leader.Tag
+
 	var memberURLs []string
-	var leaderTag string
-	var watcherTags []string
 	var memberTags []string
 	var tcpHosts []string
 
-	for _, n := range cluster.Spec.Nodes {
+	for i, n := range cluster.Spec.Nodes {
 
 		if tcpHost, ok := strings.CutPrefix(n.PublicServerUrlTcp, common.ProtocolTcp); ok {
 			tcpHosts = append(tcpHosts, tcpHost)
 		}
 
-		if n.Tag == ac.Leader {
-			leaderURL = n.PublicServerUrl
-			leaderTag = n.Tag
+		if i == 0 {
 			continue
 		}
-
-		if ac.Watchers != nil && containsTag(ac.Watchers, n.Tag) {
-			watcherURLs = append(watcherURLs, n.PublicServerUrl)
-			watcherTags = append(watcherTags, n.Tag)
-			continue
-		}
-
 		memberURLs = append(memberURLs, n.PublicServerUrl)
 		memberTags = append(memberTags, n.Tag)
 	}
 
-	allURLs := append([]string{leaderURL}, append(watcherURLs, memberURLs...)...)
-	allTags := append([]string{leaderTag}, append(watcherTags, memberTags...)...)
-
-	env := common.BuildClusterBootstrapperEnvVars(leaderURL, watcherURLs, memberURLs, allURLs, allTags, tcpHosts)
+	allURLs := append([]string{leaderURL}, memberURLs...)
+	allTags := append([]string{leaderTag}, memberTags...)
+	env := common.BuildClusterBootstrapperEnvVars(leaderURL, memberURLs, allURLs, allTags, tcpHosts)
 
 	return env, nil
 }
@@ -204,15 +185,11 @@ func containsTag(tagsList *[]string, tag string) bool {
 }
 
 func getServerCertSecretName(cluster *ravendbv1alpha1.RavenDBCluster) string {
-	ac := cluster.Spec.AutomaticClusterSetupSpec
 
 	switch cluster.Spec.Mode {
 	case ravendbv1alpha1.ModeLetsEncrypt:
-		for _, n := range cluster.Spec.Nodes {
-			if n.Tag == ac.Leader && n.CertSecretRef != nil {
-				return *n.CertSecretRef
-			}
-		}
+		return *cluster.Spec.Nodes[0].CertSecretRef
+
 	case ravendbv1alpha1.ModeNone:
 		if cluster.Spec.ClusterCertSecretRef != nil {
 			return *cluster.Spec.ClusterCertSecretRef

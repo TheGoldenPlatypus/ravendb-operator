@@ -23,8 +23,13 @@ import (
 	ravendbv1alpha1 "ravendb-operator/api/v1alpha1"
 	"ravendb-operator/pkg/resource"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type BootstrapperActor struct {
@@ -45,14 +50,36 @@ func (a *BootstrapperActor) Act(ctx context.Context, cluster *ravendbv1alpha1.Ra
 		return fmt.Errorf("failed to build Bootstrapper job: %w", err)
 	}
 
+	if job, ok := bs.(*batchv1.Job); ok {
+		return ensureJobCreateOnly(ctx, c, scheme, job, cluster)
+	}
+
 	if err := applyResource(ctx, c, scheme, bs); err != nil {
-		return fmt.Errorf("failed to apply Bootstrapper job: %w", err)
+		return fmt.Errorf("failed to apply Bootstrapper resource: %w", err)
 	}
 	return nil
 }
 
 func (a *BootstrapperActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
-	AutomaticClusterSetup := cluster.Spec.AutomaticClusterSetupSpec
+	return !cluster.IsBootstrapped()
+}
 
-	return AutomaticClusterSetup != nil
+func ensureJobCreateOnly(ctx context.Context, c client.Client, scheme *runtime.Scheme, job *batchv1.Job, owner client.Object) error {
+	var existing batchv1.Job
+	err := c.Get(ctx, types.NamespacedName{Namespace: job.Namespace, Name: job.Name}, &existing)
+
+	if err == nil {
+		return nil
+	}
+
+	if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("get job: %w", err)
+	}
+	if err := controllerutil.SetControllerReference(owner, job, scheme); err != nil {
+		return fmt.Errorf("set ownerRef: %w", err)
+	}
+	if err := c.Create(ctx, job); err != nil {
+		return fmt.Errorf("create job: %w", err)
+	}
+	return nil
 }

@@ -65,10 +65,9 @@ func BuildAdditionalEnvVars(cluster *ravendbv1alpha1.RavenDBCluster) []corev1.En
 	return envVars
 }
 
-func BuildClusterBootstrapperEnvVars(leaderURL string, watcherURLs []string, memberURLs []string, allURLs []string, allTags []string, tcpHosts []string) []corev1.EnvVar {
+func BuildClusterBootstrapperEnvVars(leaderURL string, memberURLs []string, allURLs []string, allTags []string, tcpHosts []string) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "LEADER_URL", Value: leaderURL},
-		{Name: "WATCHER_URLS", Value: strings.Join(watcherURLs, " ")},
 		{Name: "MEMBER_URLS", Value: strings.Join(memberURLs, " ")},
 		{Name: "URLS", Value: strings.Join(allURLs, " ")},
 		{Name: "TAGS", Value: strings.Join(allTags, " ")},

@@ -50,6 +50,7 @@ const (
 	CertHookVolumeName         = "ravendb-cert-hook"
 	BootstrapperHookVolumeName = "ravendb-bootstrapper-hook" ///
 	RavenDbNodeServiceAccount  = "ravendb-node"
+	RavenDbBootstrapperJob     = "ravendb-cluster-init"
 )
 
 // labels

@@ -48,7 +48,7 @@ func BuildClusterBootstrapperContainer(image string, vMounts []corev1.VolumeMoun
 		Command: []string{"/bin/sh", "-c"}, // urls space separated string
 		Args: []string{`
 			echo ">> Starting RavenDB cluster bootstrapper..."
-			/ravendb/scripts/check-nodes-discoverability.sh
+			/ravendb/scripts/check-nodes-discoverability.sh &&
 			/ravendb/scripts/init-cluster.sh
 		`},
 		VolumeMounts: vMounts,

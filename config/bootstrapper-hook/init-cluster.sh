@@ -67,7 +67,7 @@ function join_node_to_cluster() {
         --data-urlencode "tag=$tag"
     )
 
-    if [[ "$is_watcher" == "true" ]]; then
+    if [[ "$is_watcher" == "true" ]]; then  # left here for future use 
         curl_args+=( --data-urlencode "watcher=true" )
     fi
 
@@ -95,7 +95,6 @@ function print_topology() {
         CurrentTerm,
         TopologyId: .Topology.TopologyId,
         Members: (.Topology.Members | keys | join(" ")),
-        Watchers: (.Topology.Watchers | keys | join(" "))
     }'
     echo
 }
@@ -126,13 +125,6 @@ convert_pfx_to_pem_and_key "$CLIENT_PFX" "$CLIENT_CERT_PEM" "$CLIENT_KEY_PEM"
 register_admin_cert
 
 IFS=' ' read -r -a member_urls <<< "$MEMBER_URLS"
-IFS=' ' read -r -a watcher_urls <<< "$WATCHER_URLS"
-
-for url in "${watcher_urls[@]}"; do
-    tag="$(tag_from_url "$url")"
-    join_node_to_cluster "$tag" "$url" true
-    sleep 3
-done
 
 for url in "${member_urls[@]}"; do
     tag="$(tag_from_url "$url")"

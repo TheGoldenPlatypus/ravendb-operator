@@ -26,6 +26,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type ingressActor struct {
@@ -40,17 +41,23 @@ func (a *ingressActor) Name() string {
 	return "IngressActor"
 }
 
-func (a *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, c client.Client, scheme *runtime.Scheme) error {
+func (a *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, c client.Client, scheme *runtime.Scheme) (bool, error) {
 	ing, err := a.builder.Build(ctx, cluster)
 	if err != nil {
-		return fmt.Errorf("failed to build Ingress: %w", err)
+		return false, fmt.Errorf("failed to build Ingress: %w", err)
 	}
 
-	if err := applyResource(ctx, c, scheme, ing); err != nil {
-		return fmt.Errorf("failed to apply Ingress: %w", err)
+	if err := controllerutil.SetControllerReference(cluster, ing, scheme); err != nil {
+		return false, fmt.Errorf("set owner ref on Ingress: %w", err)
 	}
 
-	return nil
+	changed, err := applyResourceSSA(ctx, c, ing, "ravendb-operator/ingress")
+
+	if err != nil {
+		return false, fmt.Errorf("failed to apply Ingress: %w", err)
+	}
+
+	return changed, nil
 }
 
 func (a *ingressActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {

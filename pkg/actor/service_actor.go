@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type ServiceActor struct {
@@ -39,15 +40,19 @@ func (a *ServiceActor) Name() string {
 	return "ServiceActor"
 }
 
-func (a *ServiceActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, c client.Client, scheme *runtime.Scheme) error {
+func (a *ServiceActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, c client.Client, scheme *runtime.Scheme) (bool, error) {
 	svc, err := a.builder.Build(ctx, cluster, node)
 	if err != nil {
-		return fmt.Errorf("failed to build Service: %w", err)
+		return false, fmt.Errorf("failed to build Service: %w", err)
+	}
+	if err := controllerutil.SetControllerReference(cluster, svc, scheme); err != nil {
+		return false, fmt.Errorf("set owner ref on Service: %w", err)
 	}
 
-	if err := applyResource(ctx, c, scheme, svc); err != nil {
-		return fmt.Errorf("failed to apply Service: %w", err)
-	}
+	changed, err := applyResourceSSA(ctx, c, svc, "ravendb-operator/service")
 
-	return nil
+	if err != nil {
+		return false, fmt.Errorf("failed to apply Service: %w", err)
+	}
+	return changed, nil
 }

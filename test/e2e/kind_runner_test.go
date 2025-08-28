@@ -43,20 +43,12 @@ var (
 
 /*
 // to export:
-
 export PROJECT_ROOT="/ravendb-operator"
 export E2E_LICENSE_PATH="/ravendb-e2e/license.json"
 export E2E_CLIENT_PFX_PATH="/ravendb-e2e/setup_package/admin.client.certificate.ravendbe2e.pfx"
 export E2E_NODE_A_PFX_PATH="/ravendb-e2e/setup_package/A/cluster.server.certificate.ravendbe2e.pfx"
 export E2E_NODE_B_PFX_PATH="/ravendb-e2e/setup_package/B/cluster.server.certificate.ravendbe2e.pfx"
 export E2E_NODE_C_PFX_PATH="/ravendb-e2e/setup_package/C/cluster.server.certificate.ravendbe2e.pfx"
-
-export PROJECT_ROOT="/mnt/c/Users/omer.ratsaby/Desktop/RavenDB-24330/ravendb-operator"
-export E2E_LICENSE_PATH="/mnt/c/Users/omer.ratsaby/Desktop/ravendb-e2e/license.json"
-export E2E_CLIENT_PFX_PATH="/mnt/c/Users/omer.ratsaby/Desktop/ravendb-e2e/setup_package/admin.client.certificate.ravendbe2e.pfx"
-export E2E_NODE_A_PFX_PATH="/mnt/c/Users/omer.ratsaby/Desktop/ravendb-e2e/setup_package/A/cluster.server.certificate.ravendbe2e.pfx"
-export E2E_NODE_B_PFX_PATH="/mnt/c/Users/omer.ratsaby/Desktop/ravendb-e2e/setup_package/B/cluster.server.certificate.ravendbe2e.pfx"
-export E2E_NODE_C_PFX_PATH="/mnt/c/Users/omer.ratsaby/Desktop/ravendb-e2e/setup_package/C/cluster.server.certificate.ravendbe2e.pfx"
 
 for /etc/hosts
 todo: put setup_package to the repo for the CI

@@ -36,12 +36,12 @@ func NewServiceActor(builder resource.PerNodeBuilder) PerNodeActor {
 	return &ServiceActor{builder: builder}
 }
 
-func (a *ServiceActor) Name() string {
+func (actor *ServiceActor) Name() string {
 	return "ServiceActor"
 }
 
-func (a *ServiceActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, c client.Client, scheme *runtime.Scheme) (bool, error) {
-	svc, err := a.builder.Build(ctx, cluster, node)
+func (actor *ServiceActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, client client.Client, scheme *runtime.Scheme) (bool, error) {
+	svc, err := actor.builder.Build(ctx, cluster, node)
 	if err != nil {
 		return false, fmt.Errorf("failed to build Service: %w", err)
 	}
@@ -49,7 +49,7 @@ func (a *ServiceActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDB
 		return false, fmt.Errorf("set owner ref on Service: %w", err)
 	}
 
-	changed, err := applyResourceSSA(ctx, c, svc, "ravendb-operator/service")
+	changed, err := applyResourceSSA(ctx, client, svc, "ravendb-operator/service")
 
 	if err != nil {
 		return false, fmt.Errorf("failed to apply Service: %w", err)

@@ -64,7 +64,7 @@ func (t *resourceCollector) Collect(ctx context.Context, cli client.Client, clus
 	}
 	facts.Jobs = jobFacts
 
-	podFacts, ownedPodUIDs, claimedPVCNames, err := collectPodsAndPVCClaims(ctx, cli, ns, ownedSSUIDs)
+	podFacts, ownedPodUIDs, claimedPVCNames, err := collectPodsAndPVCRefs(ctx, cli, ns, ownedSSUIDs)
 	if err != nil {
 		return facts, err
 	}
@@ -167,7 +167,7 @@ func collectJobs(ctx context.Context, cli client.Client, ns string, cluster *rav
 	return facts, nil
 }
 
-func collectPodsAndPVCClaims(ctx context.Context, cli client.Client, ns string, ownedSSUIDs map[string]struct{}) ([]PodFact, map[string]struct{}, map[string]struct{}, error) {
+func collectPodsAndPVCRefs(ctx context.Context, cli client.Client, ns string, ownedSSUIDs map[string]struct{}) ([]PodFact, map[string]struct{}, map[string]struct{}, error) {
 
 	var list corev1.PodList
 	if err := cli.List(ctx, &list, client.InNamespace(ns)); err != nil {

@@ -42,6 +42,78 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+/*
+The RavenDBCluster Reconciliation flow
+
+Top overview
+---
+The reconciler drives the desired cluster state by:
+1) loading the RavenDBCluster,
+2) delegating object creation/update to "actors" via a Director,
+3) collecting live cluster facts,
+4) evaluating health -> conditions -> phase,
+5) persisting Status with conflict-safe merges
+6) emitting Events for condition transitions.
+
+Our goal is keep the real cluster matching the RavenDBCluster spec. each reconcile is:
+"Look at the specs -> create/adjust K8s objects accordingly -> check what's running -> update status."
+
+
+Cast
+---
+- RavenDBCluster: the single source of truth for desired state.
+- Director: a coordinator. It tells actors what to create/update.
+- Actors: small workers that own one thing (StatefulSet, Service, Ingress, Job).
+- Health collector + evaluator: responsiable to ask "what's actually happening?" based on the answer -> compute conditions and phase.
+
+
+Step by step (detailed flow)
+---
+1) load + snapshot
+   - read the RavenDBCluster.
+   - If it doesn't exist: we are done (CR deleted !!).
+   - else: Keep a copy of the previous Status/Conditions so we can detect changes and emit events.
+
+2) build + apply desired objects (via director + actors)
+  - The director runs:
+       - per cluster actors (e.g ingress) when they should act.
+       - per node actors (e.g sts) once for each node in the spec.
+   - each actor asks its builder to produce the desired K8s object.
+   - we set an OwnerReference from every child object back to this RavenDBCluster.
+   (meaning: 1. if the CR is deleted, K8s automatically cleans up our owned children
+             2. when the collector look at the cluster later (status purposes), it can easily filter our objs)
+
+   we apply resources using SSA:
+   - SSA is a smart merge done by the K8s API https://kubernetes.io/docs/reference/using-api/server-side-apply/ .
+   - we only own the fields we set. other controllers/users can manage other fields.
+   - if there's a clash on a field we own, our controller wins (with ForceOwnership).
+   - this avoids the "last write wins" problem and reduces conflicts.
+
+3) observe reality
+   - the collector lists what's in the cluster that we own (StatefulSets, Jobs, Services,
+     Ingresses, Pods, PVCs) plus relevant Secrets.
+   - it translates raw K8s objects into simple "facts" (names, phases, ready flags, etc.).
+
+4) work out health and phase
+   - the evaluator looks at the facts and sets conditions like:
+     StorageReady, CertificatesReady, LicensesValid, NodesHealthy, ExternalAccessReady
+     (if configured), BootstrapCompleted, Progressing, Degraded.
+   - then we roll them up into a single Phase
+       Ready -> Running
+       else if Degraded -> Error
+       else if Progressing -> Deploying
+       else -> Deploying.
+
+5) persist status with conflict handling
+   compare original.Status vs instance.Status (DeepEqual).
+   - if Status changed, we patch only the Status subresource against our earlier snapshot.
+   - If the API says "conflict" (someone updated Status at the same time), we requeue and try again, instead of overwriting.
+
+6) emit events on changes
+   - if any condition's Status/Reason/Message changed, we log it and publish a K8s Event.
+
+*/
+
 // RavenDBClusterReconciler reconciles a RavenDBCluster object
 type RavenDBClusterReconciler struct {
 	client.Client
@@ -66,7 +138,7 @@ type RavenDBClusterReconciler struct {
 // +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch;update
 
 func (r *RavenDBClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	l := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	var instance ravendbv1alpha1.RavenDBCluster
 	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
@@ -81,7 +153,7 @@ func (r *RavenDBClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	_, err := r.Director.ExecutePerCluster(ctx, &instance, r.Client, r.Scheme)
 	if err != nil {
-		l.Error(err, "failed to execute cluster-level actors")
+		logger.Error(err, "failed to execute cluster-level actors")
 		return ctrl.Result{}, err
 	}
 
@@ -89,7 +161,7 @@ func (r *RavenDBClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	for _, node := range instance.Spec.Nodes {
 		_, err := r.Director.ExecutePerNode(ctx, &instance, node, r.Client, r.Scheme)
 		if err != nil {
-			l.Error(err, "failed to reconcile node", "node", node.Tag)
+			logger.Error(err, "failed to reconcile node", "node", node.Tag)
 			nodeStatuses = append(nodeStatuses, ravendbv1alpha1.RavenDBNodeStatus{
 				Tag:    node.Tag,
 				Status: ravendbv1alpha1.NodeStatusFailed,
@@ -106,7 +178,7 @@ func (r *RavenDBClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	resFacts, err := health.NewResourceCollector().Collect(ctx, r.Client, &instance)
 	if err != nil {
-		l.Error(err, "resource translation failed")
+		logger.Error(err, "resource translation failed")
 	}
 	ev := health.NewEvaluator()
 	ev.Evaluate(ctx, &instance, resFacts, metav1.Now())
@@ -119,13 +191,13 @@ func (r *RavenDBClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 			return ctrl.Result{}, err
 		}
-		emitConditionTransitions(&instance, prevConditions, l, r.Recorder)
+		emitConditionTransitions(&instance, prevConditions, logger, r.Recorder)
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func emitConditionTransitions(cluster *ravendbv1alpha1.RavenDBCluster, prevConditions []metav1.Condition, l logr.Logger, rec record.EventRecorder) {
+func emitConditionTransitions(cluster *ravendbv1alpha1.RavenDBCluster, prevConditions []metav1.Condition, logger logr.Logger, rec record.EventRecorder) {
 
 	previousByType := make(map[string]metav1.Condition, len(prevConditions))
 	for i := 0; i < len(prevConditions); i++ {
@@ -139,7 +211,7 @@ func emitConditionTransitions(cluster *ravendbv1alpha1.RavenDBCluster, prevCondi
 		previous, hadPrevious := previousByType[cur.Type]
 
 		if !hadPrevious || previous.Status != cur.Status || previous.Reason != cur.Reason || previous.Message != cur.Message {
-			l.Info("Condition transition", "condition", cur)
+			logger.Info("Condition transition", "condition", cur)
 			eventType := getEventSeverity(cur)
 
 			rec.Eventf(

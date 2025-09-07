@@ -37,12 +37,12 @@ func NewIngressActor(builder resource.PerClusterBuilder) PerClusterActor {
 	return &ingressActor{builder: builder}
 }
 
-func (a *ingressActor) Name() string {
+func (actor *ingressActor) Name() string {
 	return "IngressActor"
 }
 
-func (a *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, c client.Client, scheme *runtime.Scheme) (bool, error) {
-	ing, err := a.builder.Build(ctx, cluster)
+func (actor *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, client client.Client, scheme *runtime.Scheme) (bool, error) {
+	ing, err := actor.builder.Build(ctx, cluster)
 	if err != nil {
 		return false, fmt.Errorf("failed to build Ingress: %w", err)
 	}
@@ -51,7 +51,7 @@ func (a *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDB
 		return false, fmt.Errorf("set owner ref on Ingress: %w", err)
 	}
 
-	changed, err := applyResourceSSA(ctx, c, ing, "ravendb-operator/ingress")
+	changed, err := applyResourceSSA(ctx, client, ing, "ravendb-operator/ingress")
 
 	if err != nil {
 		return false, fmt.Errorf("failed to apply Ingress: %w", err)
@@ -60,7 +60,7 @@ func (a *ingressActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDB
 	return changed, nil
 }
 
-func (a *ingressActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
+func (actor *ingressActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
 
 	externalAccess := cluster.Spec.ExternalAccessConfiguration
 

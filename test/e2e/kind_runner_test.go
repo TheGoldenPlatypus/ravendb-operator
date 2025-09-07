@@ -28,9 +28,9 @@ var (
 	webhookCertName       = "webhook-server-cert"
 	crdName               = "ravendbclusters.ravendb.ravendb.io"
 	timeout               = 240 * time.Second
-	certManagerFilePath   = "test/e2e/manifests/cert-manager.yaml"
-	localPathFilePath     = "test/e2e/manifests/local-path-storage.yaml"
-	metallbFilePath       = "test/e2e/manifests/metallb-native.yaml"
+	certManagerFilePath   = "https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml"
+	localPathFilePath     = "https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.26/deploy/local-path-storage.yaml"
+	metallbFilePath       = "https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml"
 	metallbConfigFilePath = "test/e2e/manifests/metallb-config.yaml"
 	nginxIngressFilePath  = "test/e2e/manifests/nginx-ingress-ravendb.yaml"
 	crdBasePath           = "config/crd/bases"

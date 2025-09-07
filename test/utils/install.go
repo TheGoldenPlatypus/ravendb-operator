@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/e2e-framework/pkg/env"
@@ -18,6 +19,9 @@ const (
 
 func ApplyManifest(path string) env.Func {
 	return func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
+		if strings.HasPrefix(path, "https://") {
+			return RunKubectl(ctx, "apply", "-f", path)
+		}
 		return RunKubectl(ctx, "apply", "-f", PathFromRoot(path))
 	}
 }

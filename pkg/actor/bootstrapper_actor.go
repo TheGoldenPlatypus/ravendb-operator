@@ -37,12 +37,12 @@ func NewBootstrapperActor(builder resource.PerClusterBuilder) PerClusterActor {
 	return &BootstrapperActor{builder: builder}
 }
 
-func (a *BootstrapperActor) Name() string {
+func (actor *BootstrapperActor) Name() string {
 	return "BootstrapperActor"
 }
 
-func (a *BootstrapperActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, c client.Client, scheme *runtime.Scheme) (bool, error) {
-	bs, err := a.builder.Build(ctx, cluster)
+func (actor *BootstrapperActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, client client.Client, scheme *runtime.Scheme) (bool, error) {
+	bs, err := actor.builder.Build(ctx, cluster)
 	if err != nil {
 		return false, fmt.Errorf("failed to build bootstrapper resource: %w", err)
 	}
@@ -52,14 +52,14 @@ func (a *BootstrapperActor) Act(ctx context.Context, cluster *ravendbv1alpha1.Ra
 	}
 
 	if _, ok := bs.(*batchv1.Job); ok {
-		_, err := applyResourceSSA(ctx, c, bs, "ravendb-operator/job")
+		_, err := applyResourceSSA(ctx, client, bs, "ravendb-operator/job")
 		return false, err
 	}
 
-	_, err = applyResourceSSA(ctx, c, bs, "ravendb-operator/cluster")
+	_, err = applyResourceSSA(ctx, client, bs, "ravendb-operator/cluster")
 	return false, err
 }
 
-func (a *BootstrapperActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
+func (actor *BootstrapperActor) ShouldAct(cluster *ravendbv1alpha1.RavenDBCluster) bool {
 	return !cluster.IsBootstrapped()
 }

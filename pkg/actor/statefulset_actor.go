@@ -36,12 +36,12 @@ func NewStatefulSetActor(builder resource.PerNodeBuilder) PerNodeActor {
 	return &StatefulSetActor{builder: builder}
 }
 
-func (a *StatefulSetActor) Name() string {
+func (actor *StatefulSetActor) Name() string {
 	return "StatefulSetActor"
 }
 
-func (a *StatefulSetActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, c client.Client, scheme *runtime.Scheme) (bool, error) {
-	sts, err := a.builder.Build(ctx, cluster, node)
+func (actor *StatefulSetActor) Act(ctx context.Context, cluster *ravendbv1alpha1.RavenDBCluster, node ravendbv1alpha1.RavenDBNode, client client.Client, scheme *runtime.Scheme) (bool, error) {
+	sts, err := actor.builder.Build(ctx, cluster, node)
 	if err != nil {
 		return false, fmt.Errorf("failed to build StatefulSet: %w", err)
 	}
@@ -50,7 +50,7 @@ func (a *StatefulSetActor) Act(ctx context.Context, cluster *ravendbv1alpha1.Rav
 		return false, fmt.Errorf("set owner ref on StatefulSet: %w", err)
 	}
 
-	changed, err := applyResourceSSA(ctx, c, sts, "ravendb-operator/statefulset")
+	changed, err := applyResourceSSA(ctx, client, sts, "ravendb-operator/statefulset")
 
 	if err != nil {
 		return false, fmt.Errorf("failed to apply StatefulSet: %w", err)

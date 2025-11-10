@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (g *RavenGates) ClusterConnectivity(ctx context.Context) (bool, string, error) {
+func (g *Checks) ClusterConnectivity(ctx context.Context) (bool, string, error) {
 	baseURL, err := g.clusterURL()
 	if err != nil {
 		return false, "", err

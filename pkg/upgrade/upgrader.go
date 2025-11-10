@@ -39,7 +39,7 @@ type Upgrader interface {
 }
 
 type upgrader struct {
-	buildGates func(ctx context.Context, kc client.Client, c *ravendbv1alpha1.RavenDBCluster) (Gates, error)
+	buildGates func(ctx context.Context, kc client.Client, c *ravendbv1alpha1.RavenDBCluster) (*Checks, error)
 	timing     Timing
 	emit       GateEmitter
 }
@@ -82,12 +82,12 @@ func NewUpgrader(t Timing) Upgrader {
 	}
 }
 
-func buildGatesDefault(ctx context.Context, kc client.Client, c *ravendbv1alpha1.RavenDBCluster) (Gates, error) {
+func buildGatesDefault(ctx context.Context, kc client.Client, c *ravendbv1alpha1.RavenDBCluster) (*Checks, error) {
 	httpc, err := BuildHTTPSClientFromCluster(ctx, kc, c)
 	if err != nil {
 		return nil, err
 	}
-	return NewRavenGates(httpc, c), nil
+	return NewChecks(httpc, c), nil
 }
 
 // Run() performs exactly one "upgrade tick".
@@ -235,7 +235,7 @@ func (u *upgrader) findInFlightTag(ctx context.Context, kc client.Client, c *rav
 	return "", nil
 }
 
-func (u *upgrader) preNode(ctx context.Context, c *ravendbv1alpha1.RavenDBCluster, g Gates, tag string) error {
+func (u *upgrader) preNode(ctx context.Context, c *ravendbv1alpha1.RavenDBCluster, g *Checks, tag string) error {
 	if err := u.waitNodeAlive(ctx, c, g, GatePreStep, tag); err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (u *upgrader) preNode(ctx context.Context, c *ravendbv1alpha1.RavenDBCluste
 }
 
 // postNode runs checks AFTER we mutate the node (alive, connectivity, DBs full cluster).
-func (u *upgrader) postNode(ctx context.Context, c *ravendbv1alpha1.RavenDBCluster, g Gates, tag string) error {
+func (u *upgrader) postNode(ctx context.Context, c *ravendbv1alpha1.RavenDBCluster, g *Checks, tag string) error {
 	if err := u.waitNodeAlive(ctx, c, g, GatePostStep, tag); err != nil {
 		return err
 	}

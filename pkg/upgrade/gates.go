@@ -17,7 +17,6 @@ limitations under the License.
 package upgrade
 
 import (
-	"context"
 	"net/http"
 	ravendbv1alpha1 "ravendb-operator/api/v1alpha1"
 	"strings"
@@ -39,19 +38,13 @@ const (
 	GateDatabasesOnline     GateKind = "db_groups_available_excluding_target"
 )
 
-type Gates interface {
-	NodeAlive(ctx context.Context, tag string) (ok bool, info string, err error)
-	ClusterConnectivity(ctx context.Context) (ok bool, info string, err error)
-	DatabasesOnline(ctx context.Context, excludedTag string) (ok bool, info string, err error)
-}
-
-type RavenGates struct {
+type Checks struct {
 	http    *http.Client
 	baseURL string
 	byTag   map[string]string
 }
 
-func NewRavenGates(httpc *http.Client, c *ravendbv1alpha1.RavenDBCluster) Gates {
+func NewChecks(httpc *http.Client, c *ravendbv1alpha1.RavenDBCluster) *Checks {
 	leader := ""
 	if len(c.Spec.Nodes) > 0 {
 		leader = c.Spec.Nodes[0].PublicServerUrl
@@ -66,13 +59,13 @@ func NewRavenGates(httpc *http.Client, c *ravendbv1alpha1.RavenDBCluster) Gates 
 		httpc = &http.Client{Timeout: 30 * time.Second}
 	}
 
-	return &RavenGates{
+	return &Checks{
 		http:    httpc,
 		baseURL: strings.TrimRight(leader, "/"),
 		byTag:   urlByTag,
 	}
 }
 
-func (g *RavenGates) urlForTag(tag string) string {
+func (g *Checks) urlForTag(tag string) string {
 	return g.byTag[strings.ToUpper(tag)]
 }

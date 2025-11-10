@@ -35,7 +35,7 @@ var ignoredErrSnippets = []string{
 	"serviceunavailable", "node in rehabilitation",
 }
 
-func (g *RavenGates) DatabasesOnline(ctx context.Context, excludedTag string) (bool, string, error) {
+func (g *Checks) DatabasesOnline(ctx context.Context, excludedTag string) (bool, string, error) {
 	baseURL, err := g.clusterURL()
 	if err != nil {
 		return false, "", err

@@ -35,7 +35,7 @@ type pingResponse struct {
 	Result []pingItem
 }
 
-func (g *RavenGates) httpGET(ctx context.Context, rawURL string) (int, string, error) {
+func (g *Checks) httpGET(ctx context.Context, rawURL string) (int, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return 0, "", err
@@ -53,7 +53,7 @@ func (g *RavenGates) httpGET(ctx context.Context, rawURL string) (int, string, e
 	return resp.StatusCode, string(body), nil
 }
 
-func (g *RavenGates) clusterURL() (string, error) {
+func (g *Checks) clusterURL() (string, error) {
 	if g.baseURL == "" {
 		return "", errors.New("baseURL is empty")
 	}

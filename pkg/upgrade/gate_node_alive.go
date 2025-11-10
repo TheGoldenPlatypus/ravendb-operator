@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-func (g *RavenGates) NodeAlive(ctx context.Context, tag string) (bool, string, error) {
+func (g *Checks) NodeAlive(ctx context.Context, tag string) (bool, string, error) {
 	nodeURL := strings.TrimSpace(g.urlForTag(tag))
 	if nodeURL == "" {
 		return false, "empty node url", fmt.Errorf("no URL for tag %q", tag)

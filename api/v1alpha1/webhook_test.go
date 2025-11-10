@@ -112,7 +112,7 @@ func TestImageValidator(t *testing.T) {
 		c.Spec.Image = "thegoldenplatypus/ravendb:7.1.3-ubuntu.22.04-x64"
 		err := validator.RunCreate(ctx, c)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "image must be under the 'ravendb/' repository")
+		require.Contains(t, err.Error(), "image must be under the 'ravendb/' registry namespace")
 	})
 
 	t.Run("rejects digest reference", func(t *testing.T) {

@@ -24,7 +24,6 @@ import (
 )
 
 func applyResourceSSA(ctx context.Context, c client.Client, desired client.Object, fieldOwner string) (bool, error) {
-
 	desired.SetResourceVersion("")
 	if err := c.Patch(ctx, desired, client.Apply, client.FieldOwner(fieldOwner), client.ForceOwnership); err != nil {
 		return false, fmt.Errorf("apply (SSA) %T %s/%s: %w", desired, desired.GetNamespace(), desired.GetName(), err)

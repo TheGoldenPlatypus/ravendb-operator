@@ -37,7 +37,7 @@ func BuildRavenDBContainer(image string, env []corev1.EnvVar, ports []corev1.Con
 		Ports:           ports,
 		VolumeMounts:    mounts,
 		ImagePullPolicy: ipp,
-		SecurityContext: &corev1.SecurityContext{RunAsUser: pointer.Int64(0)}, // TODO: to be removed
+		SecurityContext: &corev1.SecurityContext{RunAsUser: pointer.Int64(999), RunAsGroup: pointer.Int64(999)},
 	}
 }
 

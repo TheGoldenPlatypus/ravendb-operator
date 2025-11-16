@@ -278,7 +278,7 @@ func CreateDatabaseRF3(ctx context.Context, ns, pod, container, dbName string) e
   --cert /tmp/cluster.server.certificate.pem \
   --key  /tmp/cluster.server.certificate.key \
   -X PUT -H 'Content-Type: application/json' --data-binary @- \
-  https://a.ravendbe2e.development.run/admin/databases
+  https://a.ravendb-operator-e2e.ravendb.run/admin/databases
 %s
 JSON`, payload),
 	}

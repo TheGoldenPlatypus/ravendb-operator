@@ -61,7 +61,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gobuild-
 
       - name: Run API tests (gotestsum)
-        run: ~/go/bin/gotestsum --format=short-verbose ./api/v1alpha1
+        run: ~/go/bin/gotestsum --format=short-verbose ./api/v1
 
 
   e2e: 

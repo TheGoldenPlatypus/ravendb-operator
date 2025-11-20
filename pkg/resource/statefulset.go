@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+
 	ravendbv1 "ravendb-operator/api/v1"
 	"ravendb-operator/pkg/common"
 
@@ -35,9 +36,11 @@ func NewStatefulSetBuilder() PerNodeBuilder {
 	return &StatefulSetBuilder{}
 }
 
+
 func (b *StatefulSetBuilder) Build(ctx context.Context, cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBNode) (client.Object, error) {
 	return BuildStatefulSet(cluster, node)
 }
+
 
 func BuildStatefulSet(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBNode) (*appsv1.StatefulSet, error) {
 	stsName := fmt.Sprintf("%s%s", common.Prefix, node.Tag)
@@ -60,8 +63,6 @@ func BuildStatefulSet(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBN
 
 	affinity := buildAWSNodeAffinity(cluster, node.Tag)
 
-	// will use init containers in the upcoming bootstrapper issue
-	//	initContainers := buildInitContainers(cluster)
 
 	sts := &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
@@ -87,7 +88,17 @@ func BuildStatefulSet(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBN
 					Volumes:            volumes,
 					Affinity:           affinity,
 					ServiceAccountName: common.RavenDbNodeServiceAccount,
-					//InitContainers:     initContainers, // will use init containers in the upcoming bootstrapper issue
+
+					// alows us to bind lower ports like 443
+					// considered safe. see: https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/#safe-and-unsafe-sysctls
+					SecurityContext: &corev1.PodSecurityContext{
+						Sysctls: []corev1.Sysctl{
+							{
+								Name:  "net.ipv4.ip_unprivileged_port_start",
+								Value: "0",
+							},
+						},
+					},
 				},
 			},
 			VolumeClaimTemplates: volumeClaims,
@@ -96,6 +107,7 @@ func BuildStatefulSet(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBN
 
 	return sts, nil
 }
+
 
 func buildContainers(image string, env []corev1.EnvVar, ports []corev1.ContainerPort, mounts []corev1.VolumeMount, ipp corev1.PullPolicy, cluster *ravendbv1.RavenDBCluster) []corev1.Container {
 	rdbContainer := BuildRavenDBContainer(image, env, ports, mounts, ipp)
@@ -109,18 +121,13 @@ func buildContainers(image string, env []corev1.EnvVar, ports []corev1.Container
 
 }
 
-// will use init containers in the upcoming bootstrapper issue
-// func buildInitContainers(cluster *ravendbv1.RavenDBCluster) []corev1.Container {
-// 	var initContainers []corev1.Container
-// 	//	initContainers = append(initContainers, )
 
-// 	return initContainers
-// }
 
 func buildStatefulsetSelector(node ravendbv1.RavenDBNode) map[string]string {
 	return map[string]string{
 		common.LabelNodeTag: node.Tag}
 }
+
 
 func buildStatefulsetLabels(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBNode) map[string]string {
 	return map[string]string{
@@ -137,12 +144,15 @@ func buildStatefulsetAnnotations() map[string]string {
 	}
 }
 
+
 func buildEnvVars(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBNode) ([]corev1.EnvVar, error) {
 	env := common.BuildCommonEnvVars(cluster, node)
 
 	switch cluster.Spec.Mode {
+
 	case ravendbv1.ModeLetsEncrypt:
 		env = append(env, common.BuildSecureLetsEncryptEnvVars(cluster)...)
+
 	case ravendbv1.ModeNone:
 		env = append(env, common.BuildSecureEnvVars(cluster)...)
 	}
@@ -159,16 +169,19 @@ func buildPorts() []corev1.ContainerPort {
 	}
 }
 
+
 func buildVolumes(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBNode) []corev1.Volume {
 
 	var volumes []corev1.Volume
 	var certSecret *string
 
 	switch cluster.Spec.Mode {
+
 	case ravendbv1.ModeLetsEncrypt:
 		if node.CertSecretRef != nil {
 			certSecret = node.CertSecretRef
 		}
+
 	case ravendbv1.ModeNone:
 		if cluster.Spec.ClusterCertSecretRef != nil {
 			certSecret = cluster.Spec.ClusterCertSecretRef
@@ -205,6 +218,7 @@ func buildVolumes(cluster *ravendbv1.RavenDBCluster, node ravendbv1.RavenDBNode)
 
 	return volumes
 }
+
 
 func buildVolumeMounts(cluster *ravendbv1.RavenDBCluster) []corev1.VolumeMount {
 	vMounts := []corev1.VolumeMount{
@@ -257,6 +271,7 @@ func buildVolumeMounts(cluster *ravendbv1.RavenDBCluster) []corev1.VolumeMount {
 	return vMounts
 }
 
+
 func BuildPVCs(cluster *ravendbv1.RavenDBCluster) []corev1.PersistentVolumeClaim {
 	var pvcs []corev1.PersistentVolumeClaim
 
@@ -295,8 +310,10 @@ func BuildPVCs(cluster *ravendbv1.RavenDBCluster) []corev1.PersistentVolumeClaim
 	return pvcs
 }
 
+
 func buildAWSNodeAffinity(cluster *ravendbv1.RavenDBCluster, tag string) *corev1.Affinity {
 	if cluster.Spec.ExternalAccessConfiguration == nil ||
+
 		cluster.Spec.ExternalAccessConfiguration.Type != ravendbv1.ExternalAccessTypeAWS ||
 		cluster.Spec.ExternalAccessConfiguration.AWSExternalAccess == nil {
 		return nil

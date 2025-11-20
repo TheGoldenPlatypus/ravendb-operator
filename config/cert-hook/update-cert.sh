@@ -7,18 +7,11 @@ function update_secret {
     read -re new_cert
     
     # install depts
-    echo "Updating OS..."
-    apt-get update -qq
-    echo "Installing curl sudo and jq..."
-    apt-get install curl sudo jq -qq
-
-    # install kubectl
-    echo "Installing kubectl..."
-    cd /usr || exit
-    mkdir kubectl
-    cd kubectl || exit
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    mkdir -p "$HOME/bin"
+    curl -sL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+      -o "$HOME/bin/kubectl"
+    chmod +x "$HOME/bin/kubectl"
+    export PATH="$HOME/bin:$PATH"
 
     cr_name=$(kubectl -n ravendb get ravendbcluster -o jsonpath='{.items[0].metadata.name}')
 
@@ -48,4 +41,4 @@ function update_secret {
     fi
 }
 
-update_secret >> /var/log/ravendb-cert-update-logs
+update_secret >> ${HOME}/cert-update.log

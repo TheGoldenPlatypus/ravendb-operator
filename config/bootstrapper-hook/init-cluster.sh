@@ -16,16 +16,12 @@ function convert_pfx_to_pem_and_key() {
     openssl pkcs12 -legacy -in "$pfx" -nocerts -nodes -out "$key_out" -passin pass:
 }
 
-
-function install_deps(){
-    apt-get update -qq >/dev/null 2>&1
-    apt-get install curl sudo jq -qq >/dev/null 2>&1
-
-    cd /usr || exit
-    mkdir kubectl
-    cd kubectl || exit
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" >/dev/null 2>&1
-    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+function install_deps() {
+    mkdir -p "$HOME/bin"
+    curl -sL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+      -o "$HOME/bin/kubectl"
+    chmod +x "$HOME/bin/kubectl"
+    export PATH="$HOME/bin:$PATH"
 }
 
 

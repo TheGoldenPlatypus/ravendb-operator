@@ -19,6 +19,9 @@ var (
 	TestNS                = "ravendb"
 	operatorNS            = "ravendb-operator-system"
 	operatorImage         = testutil.Getenv("RAVEN_OPERATOR_IMAGE", "thegoldenplatypus/ravendb-operator-multi-node:latest") //todo: change to ravendb hosted image once we restructure
+	installMode           = testutil.Getenv("RAVEN_E2E_INSTALL_MODE", "kustomize")
+	helmChartPath         = testutil.Getenv("RAVEN_E2E_HELM_CHART_PATH", "chart")
+	helmRelease           = testutil.Getenv("RAVEN_E2E_HELM_RELEASE", "ravendb-operator")
 	ctlMgrName            = "ravendb-operator-controller-manager"
 	certManagerNS         = "cert-manager"
 	controllerNS          = "controller"
@@ -58,7 +61,7 @@ func TestMain(m *testing.M) {
 	cfg := envconf.New()
 	testenv = env.NewWithConfig(cfg)
 
-	testenv.Setup(
+	setup := []env.Func{
 
 		envfuncs.CreateKindCluster(clusterName),
 		testutil.BindKubectlToSuiteEnv(),
@@ -80,16 +83,24 @@ func TestMain(m *testing.M) {
 		testutil.WaitForCRDEstablished(crdName, timeout),
 
 		testutil.BuildAndLoadOperator(operatorImage, dockerfileName, testutil.RepoRoot()),
-		testutil.ApplyKustomize(crdDefaultPath),
-
 		envfuncs.CreateNamespace(TestNS),
+	}
 
+	if installMode == "helm" {
+		setup = append(setup, testutil.InstallOperatorHelm(helmRelease, operatorNS, helmChartPath, timeout))
+	} else {
+		setup = append(setup, testutil.ApplyKustomize(crdDefaultPath))
+	}
+
+	setup = append(setup,
 		testutil.WaitForSecret(webhookCertName, operatorNS, timeout),
 		testutil.SetDeploymentImage(operatorNS, ctlMgrName, "manager", operatorImage),
 		testutil.PatchImagePullPolicyIfNotPresent(operatorNS, ctlMgrName),
 		testutil.DumpDeploymentImage(operatorNS, ctlMgrName),
 		testutil.WaitForDeployment(ctlMgrName, operatorNS, timeout),
 	)
+
+	testenv.Setup(setup...)
 
 	testenv.Finish(
 		envfuncs.DestroyKindCluster(clusterName),

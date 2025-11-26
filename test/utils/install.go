@@ -55,9 +55,7 @@ func ApplyCRDsFromDir(dir string) env.Func {
 func InstallNodeRBAC(ns, basePath string) env.Func {
 	return func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
 		files := []string{
-			filepath.Join(basePath, "ravendb-node-sa.yaml"),
-			filepath.Join(basePath, "ravendb-node-role.yaml"),
-			filepath.Join(basePath, "ravendb-node-rolebinding.yaml"),
+			filepath.Join(basePath, "ravendb_node_rbac.yaml"),
 		}
 		for _, f := range files {
 			if _, err := RunKubectl(ctx, "apply", "-f", PathFromRoot(f), "-n", ns); err != nil {
@@ -211,3 +209,29 @@ func DumpDeploymentImage(ns, deploy string) env.Func {
 		return ctx, err
 	}
 }
+
+func InstallOperatorHelm(release, ns, chartRelPath string, timeout time.Duration) env.Func {
+	return func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
+		chartPath := PathFromRoot(chartRelPath)
+		extra := strings.Fields(os.Getenv("RAVEN_E2E_HELM_ARGS"))
+
+		args := []string{
+			"upgrade", "--install", release, chartPath,
+			"-n", ns,
+			"--create-namespace",
+			"--wait",
+			"--timeout", timeout.String(),
+			"--skip-crds",
+			"--set", "crds.enabled=false",
+			// test runner will create namespace + secrets itselves
+			"--set", "ravendb.enabled=false",
+		}
+		args = append(args, extra...)
+
+		if err := RunHelm(ctx, args...); err != nil {
+			return ctx, fmt.Errorf("helm install operator: %w", err)
+		}
+		return ctx, nil
+	}
+}
+

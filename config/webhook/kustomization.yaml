@@ -2,8 +2,8 @@ resources:
 - manifests.yaml
 - service.yaml
 
-patchesStrategicMerge:
-  - patches/namespace_selector.yaml
+patches:
+  - path: patches/namespace_selector.yaml
   
 configurations:
 - kustomizeconfig.yaml

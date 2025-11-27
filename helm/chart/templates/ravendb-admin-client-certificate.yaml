@@ -1,4 +1,4 @@
-{{- if .Values.provisioning }}
+{{- if and .Values.provisioning .Values.provisioning.clientPfx (ne .Values.provisioning.clientPfx "") }}
 apiVersion: v1
 kind: Secret
 metadata:
